@@ -1,0 +1,96 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.table th, .table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+}
+
+.button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.button:hover {
+    background-color: #218838;
+}
+
+.card {
+    width: 72px;
+    height: 98px;
+    border-radius: 6px;
+    border: 1px solid #bbb;
+    display: inline-block;
+    margin: 6px;
+    vertical-align: middle;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.card--face {
+    background: linear-gradient(180deg, #fff 0%, #f8f8f8 100%);
+}
+
+.card--back {
+    background: repeating-linear-gradient(45deg, #c11 0 6px, #a00 6px 12px);
+}
+
+.card__corner {
+    position: absolute;
+    font-size: 14px;
+    line-height: 16px;
+    color: #111;
+    padding: 6px;
+}
+
+.card__corner--top-left {
+    top: 0;
+    left: 0;
+    text-align: left;
+}
+
+.card__corner--bottom-right {
+    bottom: 0;
+    right: 0;
+    transform: rotate(180deg);
+}
+
+.suit--hearts, .suit--diamonds { color: #b00; }
+.suit--clubs, .suit--spades { color: #000; }
+
+.card__center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+}
+
+.message {
+    font-size: 18px;
+    color: #d9534f;
+    text-align: center;
+    margin-top: 20px;
+}

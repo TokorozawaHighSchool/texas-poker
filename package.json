@@ -1,0 +1,27 @@
+{
+  "name": "texas-poker",
+  "version": "1.0.0",
+  "description": "A Texas Hold'em poker game with AI opponents.",
+  "main": "src/js/main.js",
+  "scripts": {
+    "start": "live-server src",
+    "test": "jest"
+  },
+  "keywords": [
+    "poker",
+    "texas hold'em",
+    "game",
+    "ai"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "live-server": "^1.2.1",
+    "jest": "^27.0.6"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/texas-poker.git"
+  }
+}

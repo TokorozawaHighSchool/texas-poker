@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テキサスポーカー</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>テキサスポーカー</h1>
+        <div id="player-area">
+            <h2>プレイヤーの手札</h2>
+            <div id="player-hand"></div>
+            <div id="player-chips" class="chips">Chips: $1000</div>
+        </div>
+        <div id="ai-container">
+            <h2>AI プレイヤー</h2>
+            <!-- AI プレイヤーのブロックは JavaScript でここに動的に追加されます -->
+        </div>
+        <div id="community-cards">
+            <h2>コミュニティカード</h2>
+            <div id="community-hand"></div>
+        </div>
+    <button id="deal-button">カードを配る</button>
+    <button id="call-button">コール</button>
+    <button id="raise-button">レイズ</button>
+    <button id="fold-button">フォールド</button>
+        <div id="pot">Pot: $0</div>
+        <div id="message"></div>
+    </div>
+    <script src="js/deck.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
