@@ -185,6 +185,9 @@ class PokerGame {
             const winnerName = best.name || 'Player';
             const awarded = this.pot;
             this.pot = 0;
+            // showdown後、AIでチップが0以下のものを退場（players配列から除外）
+            // プレイヤー（index 0）は除外しない
+            this.players = this.players.filter((pl, idx) => idx === 0 || pl.chips > 0);
             return { winner: best, winnerName, awarded };
         }
         return null;

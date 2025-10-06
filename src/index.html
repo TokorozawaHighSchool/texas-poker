@@ -9,21 +9,26 @@
 <body>
     <div id="game-container">
         <h1>テキサスポーカー</h1>
-        <div id="player-area">
-            <h2>プレイヤーの手札</h2>
-            <div id="player-hand"></div>
-            <div id="player-chips" class="chips">Chips: $1000</div>
+        <div id="table-layout">
+            <div id="community-cards">
+                <h2>コミュニティカード</h2>
+                <div id="community-hand"></div>
+            </div>
+            <div id="hands-row">
+                <div id="player-area">
+                    <h2>プレイヤーの手札</h2>
+                    <div id="player-hand"></div>
+                    <div id="player-chips" class="chips">Chips: $1000</div>
+                </div>
+                <div id="ai-container">
+                    <h2>AI プレイヤー</h2>
+                    <!-- AI プレイヤーのブロックは JavaScript でここに動的に追加されます -->
+                </div>
+            </div>
         </div>
-        <div id="ai-container">
-            <h2>AI プレイヤー</h2>
-            <!-- AI プレイヤーのブロックは JavaScript でここに動的に追加されます -->
-        </div>
-        <div id="community-cards">
-            <h2>コミュニティカード</h2>
-            <div id="community-hand"></div>
-        </div>
-    <button id="deal-button">カードを配る</button>
+    <!-- <button id="deal-button">カードを配る</button> -->
     <button id="call-button">コール</button>
+    <input type="number" id="raise-amount" min="1" value="50" style="width:80px;"> 
     <button id="raise-button">レイズ</button>
     <button id="fold-button">フォールド</button>
         <div id="pot">Pot: $0</div>

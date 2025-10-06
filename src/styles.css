@@ -1,3 +1,66 @@
+#table-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* コマンドボタンと入力欄を大きく */
+#game-container button,
+#game-container input[type="number"] {
+    font-size: 1.3rem;
+    padding: 10px 22px;
+    margin: 6px 4px;
+    border-radius: 8px;
+}
+
+#game-container input[type="number"] {
+    width: 80px;
+    text-align: right;
+}
+
+/* ポット表示をやや大きく */
+#pot {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1a237e;
+    margin: 16px 0 0 0;
+    text-align: center;
+}
+
+/* メッセージ（行動表示）をやや大きく */
+#message, .message {
+    font-size: 1.3rem;
+    color: #d9534f;
+    text-align: center;
+    margin-top: 18px;
+    font-weight: bold;
+}
+
+#community-cards {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0 40px 0;
+}
+
+#hands-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 80px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+#player-area, #ai-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;

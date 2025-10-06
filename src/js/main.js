@@ -1,39 +1,53 @@
 // メインロジックを実行するファイルです。ゲームの初期化やイベントリスナーの設定を行います。
 
 document.addEventListener('DOMContentLoaded', () => {
-    const dealButton = document.getElementById('deal-button');
-    dealButton.addEventListener('click', () => {
-        if (!window._gameInstance) {
-            // create Player + 3 AIs
-            const names = ['Player', 'AI 1', 'AI 2', 'AI 3'];
-            window._gameInstance = new (window.Game || window.PokerGame)(names);
-            window._gameInstance.initializeGame(names);
-            // initialize chips for players
-            window._gameInstance.players.forEach(p => p.chips = 1000);
-            window._gameInstance.pot = 0;
-            // render AI blocks
-            const aiPlayers = window._gameInstance.players.slice(1).map(p => ({ chips: p.chips }));
-            UI.renderAIPlayers(aiPlayers);
-        }
-        window._gameInstance.dealCards();
-        // update UI
-        const player = window._gameInstance.players[0];
-        const ai = window._gameInstance.players[1];
-        console.log('player hand after deal:', player && player.hand);
-        console.log('ai hand after deal:', ai && ai.hand);
-        console.log('community after deal:', window._gameInstance.communityCards);
-        UI.updatePlayerHand(player.hand);
-        UI.updateAIHand(ai.hand, true); // keep AI face-down by default
-        UI.updateTableCards(window._gameInstance.communityCards);
-        UI.updateChips(player.chips, ai.chips, window._gameInstance.pot);
+    // 初回自動配布
+    if (!window._gameInstance) {
+        // create Player + 3 AIs
+        const names = ['Player', 'AI 1', 'AI 2', 'AI 3'];
+        window._gameInstance = new (window.Game || window.PokerGame)(names);
+        window._gameInstance.initializeGame(names);
+        // initialize chips for players
+        window._gameInstance.players.forEach(p => p.chips = 1000);
+        window._gameInstance.pot = 0;
+        // render AI blocks
+        const aiPlayers = window._gameInstance.players.slice(1).map(p => ({ chips: p.chips }));
+        UI.renderAIPlayers(aiPlayers);
+    }
+    window._gameInstance.dealCards();
+    // --- ここから強制ベット（100チップ）処理 ---
+    const betAmount = 100;
+    window._gameInstance.players.forEach(p => {
+        const actualBet = Math.min(betAmount, p.chips);
+        p.chips -= actualBet;
+        window._gameInstance.pot += actualBet;
     });
+    // update UI
+    const player = window._gameInstance.players[0];
+    const ai = window._gameInstance.players[1];
+    console.log('player hand after deal:', player && player.hand);
+    console.log('ai hand after deal:', ai && ai.hand);
+    console.log('community after deal:', window._gameInstance.communityCards);
+    UI.updatePlayerHand(player.hand);
+    UI.updateAIHand(ai.hand, true); // keep AI face-down by default
+    UI.updateTableCards(window._gameInstance.communityCards);
+    UI.updateChips(player.chips, ai ? ai.chips : 0, window._gameInstance.pot);
     const callBtn = document.getElementById('call-button');
     const raiseBtn = document.getElementById('raise-button');
     const foldBtn = document.getElementById('fold-button');
+    const raiseAmountInput = document.getElementById('raise-amount');
 
     callBtn.addEventListener('click', () => playerAction('call'));
     raiseBtn.addEventListener('click', () => {
-        const raiseAmount = 50; // simple fixed raise for now
+        let raiseAmount = 50;
+        const game = window._gameInstance;
+        if (raiseAmountInput && !isNaN(parseInt(raiseAmountInput.value))) {
+            raiseAmount = parseInt(raiseAmountInput.value);
+        }
+        // プレイヤーの所持チップを超えないように制限
+        if (game && game.players && game.players[0]) {
+            raiseAmount = Math.min(raiseAmount, game.players[0].chips);
+        }
         playerAction('raise', raiseAmount);
     });
     foldBtn.addEventListener('click', () => playerAction('fold'));
@@ -105,16 +119,52 @@ function playerAction(action, amount = 0) {
         // call showdown logic to determine winner and award pot
         if (typeof game.showdown === 'function') {
             const res = game.showdown();
-            if (res && res.winnerName) {
-                UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
-            } else {
-                UI.showMessage('Showdown finished.');
-            }
             // update chips after awarding
             game.players.forEach((pl, i) => {
                 if (i === 0) UI.updateChips(pl.chips, null, game.pot);
                 else UI.updateAIByIndex(i - 1, pl.hand, false, pl.chips);
             });
+            // 退場AIを画面からも消す
+            const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
+            UI.renderAIPlayers(aiPlayers);
+            // 勝利・敗北判定
+            if (game.players.length === 1) {
+                UI.showMessage('AIを全て倒しました！勝利です！');
+                return;
+            }
+            if (game.players[0].chips <= 0) {
+                UI.showMessage('あなたのチップがなくなりました。敗北です。');
+                return;
+            }
+            // 通常の勝者表示
+            if (res && res.winnerName) {
+                UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
+            } else {
+                UI.showMessage('Showdown finished.');
+            }
+
+            // --- showdown後に自動で新しいカードを配る ---
+            setTimeout(() => {
+                if (game.players.length === 1 || game.players[0].chips <= 0) return;
+                game.dealCards();
+                // 強制ベット
+                const betAmount = 100;
+                game.players.forEach(p => {
+                    const actualBet = Math.min(betAmount, p.chips);
+                    p.chips -= actualBet;
+                    game.pot += actualBet;
+                });
+                // update UI
+                const player = game.players[0];
+                const ai = game.players[1];
+                UI.updatePlayerHand(player.hand);
+                if (ai) UI.updateAIHand(ai.hand, true);
+                UI.updateTableCards(game.communityCards);
+                UI.updateChips(player.chips, ai ? ai.chips : 0, game.pot);
+                // AIブロック再描画
+                const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
+                UI.renderAIPlayers(aiPlayers);
+            }, 1800); // 1.8秒後に自動配布
         }
     }
 }
