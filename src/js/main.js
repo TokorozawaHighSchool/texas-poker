@@ -15,13 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.renderAIPlayers(aiPlayers);
     }
     window._gameInstance.dealCards();
-    // --- ここから強制ベット（100チップ）処理 ---
-    const betAmount = 100;
-    window._gameInstance.players.forEach(p => {
-        const actualBet = Math.min(betAmount, p.chips);
-        p.chips -= actualBet;
-        window._gameInstance.pot += actualBet;
-    });
     // update UI
     const player = window._gameInstance.players[0];
     const ai = window._gameInstance.players[1];
@@ -36,6 +29,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const raiseBtn = document.getElementById('raise-button');
     const foldBtn = document.getElementById('fold-button');
     const raiseAmountInput = document.getElementById('raise-amount');
+        const retryBtn = document.getElementById('retry-button');
+
+        // 再挑戦ボタンのイベント
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => {
+                // ゲーム初期化
+                const names = ['Player', 'AI 1', 'AI 2', 'AI 3'];
+                window._gameInstance = new (window.Game || window.PokerGame)(names);
+                window._gameInstance.initializeGame(names);
+                window._gameInstance.players.forEach(p => p.chips = 1000);
+                window._gameInstance.pot = 0;
+                window._gameInstance.dealCards();
+                // startHand() already handles forced bets; no duplicate here
+                // UI初期化
+                const player = window._gameInstance.players[0];
+                const ai = window._gameInstance.players[1];
+                UI.updatePlayerHand(player.hand);
+                UI.updateAIHand(ai.hand, true);
+                UI.updateTableCards(window._gameInstance.communityCards);
+                UI.updateChips(player.chips, ai ? ai.chips : 0, window._gameInstance.pot);
+                const aiPlayers = window._gameInstance.players.slice(1).map(p => ({ chips: p.chips }));
+                UI.renderAIPlayers(aiPlayers);
+                UI.showMessage('');
+                retryBtn.style.display = 'none';
+            });
+        }
 
     callBtn.addEventListener('click', () => playerAction('call'));
     raiseBtn.addEventListener('click', () => {
@@ -57,8 +76,44 @@ function playerAction(action, amount = 0) {
     const game = window._gameInstance;
     if (!game) return;
     const playerIndex = 0;
-    const aiStart = 1;
 
+    // AIターン進行関数（プレイヤーに戻るかショーダウンまで実行）
+    function runAITurnsUntilPlayerOrShowdown() {
+        let loopCount = 0;
+        while (game.stage < 4 && game.currentPlayerIndex !== playerIndex && loopCount < 100) {
+            loopCount++;
+            // 全員オールインなら打ち切り（ショーダウンは別処理で行う）
+            if (game.players.every(p => p.chips === 0)) break;
+            const idx = game.currentPlayerIndex;
+            const actor = game.players[idx];
+            if (actor.folded || actor.chips <= 0) {
+                game.advanceToNextActive();
+                continue;
+            }
+            const decision = (typeof actor.decideAction === 'function') ? actor.decideAction(game, idx) : { action: 'call' };
+            const act = decision && decision.action;
+            if (!['fold', 'call', 'raise'].includes(act)) {
+                game.fold(idx);
+                UI.showMessage(`${actor.name} folds (invalid action).`);
+            } else if (act === 'fold') {
+                game.fold(idx);
+                UI.showMessage(`${actor.name} folds.`);
+            } else if (act === 'call') {
+                game.call(idx);
+                UI.showMessage(`${actor.name} calls.`);
+            } else if (act === 'raise') {
+                let amt = parseInt(decision.amount);
+                if (isNaN(amt) || amt <= 0) amt = 50;
+                amt = Math.min(amt, actor.chips);
+                game.bet(idx, amt);
+                UI.showMessage(`${actor.name} raises ${amt}.`);
+            }
+            UI.updateAIByIndex(idx - 1, actor.hand, true, actor.chips);
+            if (game.countActivePlayers() <= 1) break;
+        }
+    }
+
+    // プレイヤーのアクション処理
     if (action === 'call') {
         game.call(playerIndex);
     } else if (action === 'raise') {
@@ -67,104 +122,69 @@ function playerAction(action, amount = 0) {
         game.fold(playerIndex);
     }
 
-    // update UI after player's action
+    // オールインや現在のターンがAI側ならAIを進める
+    if (game.stage < 4 && (game.players[playerIndex].chips === 0 || game.currentPlayerIndex !== playerIndex)) {
+        runAITurnsUntilPlayerOrShowdown();
+    }
+
+    // UI更新
     const player = game.players[playerIndex];
     UI.updatePlayerHand(player.hand);
     UI.updateTableCards(game.communityCards);
-    // Update chips/pot and AI panels
     UI.updateChips(player.chips, null, game.pot);
     game.players.slice(1).forEach((aiPlayer, i) => UI.updateAIByIndex(i, aiPlayer.hand, true, aiPlayer.chips));
 
-    // Process turns strictly: continue letting currentPlayerIndex act until it returns to player (index 0) or hand ends
-    while (game.stage < 4 && game.currentPlayerIndex !== 0) {
-        const idx = game.currentPlayerIndex;
-        const actor = game.players[idx];
-        if (actor.folded || actor.chips <= 0) {
-            // skip
-            game.advanceToNextActive();
-            continue;
-        }
-
-        // AI acts
-        const decision = actor.decideAction(game, idx);
-        if (decision.action === 'fold') {
-            game.fold(idx);
-            UI.showMessage(`${actor.name} folds.`);
-        } else if (decision.action === 'call') {
-            game.call(idx);
-            UI.showMessage(`${actor.name} calls.`);
-        } else if (decision.action === 'raise') {
-            const amt = Math.min(decision.amount || 50, actor.chips);
-            game.bet(idx, amt);
-            UI.showMessage(`${actor.name} raises ${amt}.`);
-        }
-
-        // update this AI's UI block
-        UI.updateAIByIndex(idx - 1, actor.hand, true, actor.chips);
+    // もしまだAIのターンが残っているなら続けて処理
+    if (game.stage < 4 && game.currentPlayerIndex !== playerIndex) {
+        runAITurnsUntilPlayerOrShowdown();
     }
 
-    // final UI update for player and community
-    UI.updatePlayerHand(player.hand);
-    UI.updateTableCards(game.communityCards);
-    // update chips for all players: player and each AI block
-    UI.updateChips(player.chips, null, game.pot);
-    game.players.slice(1).forEach((aiPlayer, i) => UI.updateAIByIndex(i, aiPlayer.hand, true, aiPlayer.chips));
-
-    // if we've reached showdown stage, reveal hands and determine winner
+    // ショーダウン処理
     if (game.stage === 4) {
-        // reveal all AI hands
-        game.players.slice(1).forEach((aiPlayer, i) => UI.updateAIByIndex(i, aiPlayer.hand, false, aiPlayer.chips));
-        // reveal player hand (already visible)
-        UI.updatePlayerHand(player.hand);
-        // call showdown logic to determine winner and award pot
-        if (typeof game.showdown === 'function') {
-            const res = game.showdown();
+        function finalizeShowdown(res) {
             // update chips after awarding
             game.players.forEach((pl, i) => {
                 if (i === 0) UI.updateChips(pl.chips, null, game.pot);
                 else UI.updateAIByIndex(i - 1, pl.hand, false, pl.chips);
             });
-            // 退場AIを画面からも消す
             const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
             UI.renderAIPlayers(aiPlayers);
-            // 勝利・敗北判定
+            const retryBtn = document.getElementById('retry-button');
             if (game.players.length === 1) {
                 UI.showMessage('AIを全て倒しました！勝利です！');
+                if (retryBtn) retryBtn.style.display = '';
                 return;
             }
             if (game.players[0].chips <= 0) {
                 UI.showMessage('あなたのチップがなくなりました。敗北です。');
+                if (retryBtn) retryBtn.style.display = '';
                 return;
             }
-            // 通常の勝者表示
             if (res && res.winnerName) {
                 UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
             } else {
                 UI.showMessage('Showdown finished.');
             }
-
-            // --- showdown後に自動で新しいカードを配る ---
+        }
+        // reveal all AI hands
+        game.players.slice(1).forEach((aiPlayer, i) => UI.updateAIByIndex(i, aiPlayer.hand, false, aiPlayer.chips));
+        UI.updatePlayerHand(player.hand);
+        if (typeof game.showdown === 'function') {
+            const res = game.showdown();
+            finalizeShowdown(res);
+            // 自動で新しいハンドを配る（showdownでゲームが続行可能な場合のみ）
             setTimeout(() => {
                 if (game.players.length === 1 || game.players[0].chips <= 0) return;
                 game.dealCards();
-                // 強制ベット
-                const betAmount = 100;
-                game.players.forEach(p => {
-                    const actualBet = Math.min(betAmount, p.chips);
-                    p.chips -= actualBet;
-                    game.pot += actualBet;
-                });
-                // update UI
                 const player = game.players[0];
                 const ai = game.players[1];
                 UI.updatePlayerHand(player.hand);
                 if (ai) UI.updateAIHand(ai.hand, true);
                 UI.updateTableCards(game.communityCards);
                 UI.updateChips(player.chips, ai ? ai.chips : 0, game.pot);
-                // AIブロック再描画
                 const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
                 UI.renderAIPlayers(aiPlayers);
-            }, 1800); // 1.8秒後に自動配布
+            }, 1800);
         }
     }
 }

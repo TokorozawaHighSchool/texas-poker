@@ -58,6 +58,14 @@ class PokerGame {
             }
         }
         this.pot = 0;
+        // --- 強制収集（アンティ/ブラインド） ---
+        const forcedAmount = 100;
+        for (let p of this.players) {
+            const pay = Math.min(forcedAmount, p.chips);
+            p.chips -= pay;
+            p.contribution = (p.contribution || 0) + pay;
+            this.pot += pay;
+        }
         this.currentBet = 0;
         this.lastRaiser = null;
         this.currentPlayerIndex = (this.dealerIndex + 1) % this.players.length;
@@ -84,6 +92,8 @@ class PokerGame {
                 return;
             }
         }
+    // no active player found: fallback to player 0 to avoid stuck state
+    this.currentPlayerIndex = 0;
     }
 
     call(playerIndex) {
