@@ -61,6 +61,45 @@
     flex-direction: column;
     align-items: center;
 }
+
+/* ai container: lay out multiple ai-blocks horizontally */
+#ai-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#ai-container > .ai-block, #ai-container > .ai-block + .ai-block {
+    /* individual AI blocks already column; ensure spacing when displayed in row */
+}
+
+/* container that holds ai-blocks horizontally when renderAIPlayers adds them */
+.ai-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-end;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Hand container: show cards horizontally and center */
+#player-hand, .ai-hand, #community-hand {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 110px;
+}
+
+/* Ensure AI block elements align similarly when renderAIPlayers creates ai-block */
+.ai-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 6px 0;
+}
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;

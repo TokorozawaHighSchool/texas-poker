@@ -59,14 +59,18 @@ const ui = (() => {
     const renderAIPlayers = (aiPlayers) => {
         const container = document.getElementById('ai-container');
         if (!container) return;
+        // create header and a row wrapper for ai blocks
         container.innerHTML = '<h2>AI プレイヤー</h2>';
+        const row = document.createElement('div');
+        row.className = 'ai-row';
         aiPlayers.forEach((ai, idx) => {
             const block = document.createElement('div');
             block.className = 'ai-block';
             block.id = `ai-block-${idx}`;
             block.innerHTML = `<h3>AI ${idx + 1}</h3><div id="ai-${idx}-hand" class="ai-hand"></div><div id="ai-${idx}-chips" class="chips">Chips: $${ai.chips || 0}</div>`;
-            container.appendChild(block);
+            row.appendChild(block);
         });
+        container.appendChild(row);
     };
 
     const updateAIByIndex = (index, aiHand, faceDown = true, chips) => {
