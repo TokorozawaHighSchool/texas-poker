@@ -22,12 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (firstAI) UI.updateAIHand(firstAI.hand, true);
     UI.updateTableCards(window._gameInstance.communityCards);
     UI.updateChips(player0.chips, firstAI ? firstAI.chips : 0, window._gameInstance.pot);
+    // 初期役名
+    if (window.evaluateHandName) {
+        const cards7 = [...player0.hand, ...window._gameInstance.communityCards];
+        UI.updatePlayerHandName(window.evaluateHandName(cards7));
+    }
 
     const callBtn = document.getElementById('call-button');
     const raiseBtn = document.getElementById('raise-button');
     const foldBtn = document.getElementById('fold-button');
     const raiseAmountInput = document.getElementById('raise-amount');
     const retryBtn = document.getElementById('retry-button');
+    const chartBtn = document.getElementById('hand-chart-button');
+    const chartOverlay = document.getElementById('hand-chart-overlay');
+    const chartClose = document.getElementById('hand-chart-close');
 
     if (retryBtn) {
         retryBtn.addEventListener('click', () => {
@@ -51,8 +59,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    callBtn.addEventListener('click', () => playerAction('call'));
+    // Hand chart open/close
+    function openChart(){ if (chartOverlay){ chartOverlay.style.display = 'flex'; if (window.Sound) window.Sound.click(); } }
+    function closeChart(){ if (chartOverlay){ chartOverlay.style.display = 'none'; if (window.Sound) window.Sound.click(); } }
+    if (chartBtn) chartBtn.addEventListener('click', openChart);
+    if (chartClose) chartClose.addEventListener('click', closeChart);
+    if (chartOverlay) chartOverlay.addEventListener('click', (e)=>{ if (e.target === chartOverlay) closeChart(); });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeChart(); });
+
+    callBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('call'); });
     raiseBtn.addEventListener('click', () => {
+        if (window.Sound) window.Sound.click();
         let raiseAmount = 50;
         const game = window._gameInstance;
         if (raiseAmountInput && !isNaN(parseInt(raiseAmountInput.value))) {
@@ -63,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         playerAction('raise', raiseAmount);
     });
-    foldBtn.addEventListener('click', () => playerAction('fold'));
+    foldBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('fold'); });
 });
 
 function playerAction(action, amount = 0) {
@@ -87,18 +104,22 @@ function playerAction(action, amount = 0) {
             if (!['fold', 'call', 'raise'].includes(act)) {
                 game.fold(idx);
                 UI.showMessage(`${actor.name} folds (invalid action).`);
+                if (window.Sound) window.Sound.fold();
             } else if (act === 'fold') {
                 game.fold(idx);
                 UI.showMessage(`${actor.name} folds.`);
+                if (window.Sound) window.Sound.fold();
             } else if (act === 'call') {
                 game.call(idx);
                 UI.showMessage(`${actor.name} calls.`);
+                if (window.Sound) window.Sound.chips();
             } else if (act === 'raise') {
                 let amt = parseInt(decision.amount);
                 if (isNaN(amt) || amt <= 0) amt = 50;
                 amt = Math.min(amt, actor.chips);
                 game.bet(idx, amt);
                 UI.showMessage(`${actor.name} raises ${amt}.`);
+                if (window.Sound) window.Sound.chips();
             }
             UI.updateAIByIndex(idx - 1, actor.hand, true, actor.chips);
             if (game.countActivePlayers() <= 1) break;
@@ -107,10 +128,13 @@ function playerAction(action, amount = 0) {
 
     if (action === 'call') {
         game.call(playerIndex);
+        if (window.Sound) window.Sound.chips();
     } else if (action === 'raise') {
         game.bet(playerIndex, amount);
+        if (window.Sound) window.Sound.chips();
     } else if (action === 'fold') {
         game.fold(playerIndex);
+        if (window.Sound) window.Sound.fold();
     }
 
     if (game.stage < 4 && (game.players[playerIndex].chips === 0 || game.currentPlayerIndex !== playerIndex)) {
@@ -121,6 +145,11 @@ function playerAction(action, amount = 0) {
     UI.updatePlayerHand(player.hand);
     UI.updateTableCards(game.communityCards);
     UI.updateChips(player.chips, null, game.pot);
+    // プレイヤーの役名は常時更新
+    if (window.evaluateHandName) {
+        const cards7 = [...player.hand, ...game.communityCards];
+        UI.updatePlayerHandName(window.evaluateHandName(cards7));
+    }
     game.players.slice(1).forEach((aiPlayer, i) => UI.updateAIByIndex(i, aiPlayer.hand, true, aiPlayer.chips));
 
     if (game.stage < 4 && game.currentPlayerIndex !== playerIndex) {
@@ -130,15 +159,24 @@ function playerAction(action, amount = 0) {
     // ショウダウン処理（フォールドしていないAIのみ公開）
     if (game.stage === 4) {
         function finalizeShowdown(res) {
-            // ブロックを最新状態で描画してから各手札を更新（フォールドAIは伏せたまま）
-            const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
-            UI.renderAIPlayers(aiPlayers);
+            // 既存のAI表示数と比較し、人数が変わったときのみ再構築（フリップ演出を保護）
+            const currentBlocks = document.querySelectorAll('#ai-container .ai-block').length;
+            const targetBlocks = Math.max(0, game.players.length - 1);
+            if (currentBlocks !== targetBlocks) {
+                const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
+                UI.renderAIPlayers(aiPlayers);
+            }
             game.players.forEach((pl, i) => {
                 if (i === 0) {
                     UI.updateChips(pl.chips, null, game.pot);
                 } else {
-                    const faceDown = !!pl.folded;
+                    const faceDown = !!pl.folded; // 伏せ：フォールド者のみ
                     UI.updateAIByIndex(i - 1, pl.hand, faceDown, pl.chips);
+                    // ショーダウン時に役名を表示（フォールドしていないAIのみ）
+                    if (!pl.folded && window.evaluateHandName) {
+                        const name = window.evaluateHandName([...pl.hand, ...game.communityCards]);
+                        UI.updateAIHandNameByIndex(i - 1, name);
+                    }
                 }
             });
 
@@ -155,6 +193,7 @@ function playerAction(action, amount = 0) {
             }
             if (res && res.winnerName) {
                 UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
+                if (window.Sound) window.Sound.win();
             } else {
                 UI.showMessage('Showdown finished.');
             }
@@ -179,6 +218,12 @@ function playerAction(action, amount = 0) {
             UI.updateChips(np.chips, na ? na.chips : 0, game.pot);
             const aiPlayersNext = game.players.slice(1).map(p => ({ chips: p.chips }));
             UI.renderAIPlayers(aiPlayersNext);
+            // 新ハンドで役名クリア＆プレイヤー役名更新
+            UI.updatePlayerHandName('');
+            if (window.evaluateHandName) {
+                const cards7b = [...np.hand, ...game.communityCards];
+                UI.updatePlayerHandName(window.evaluateHandName(cards7b));
+            }
         }, 1800);
     }
 }
