@@ -4,7 +4,7 @@
   "description": "A Texas Hold'em poker game with AI opponents.",
   "main": "src/js/main.js",
   "scripts": {
-    "start": "live-server src",
+  "start": "live-server .",
     "test": "jest"
   },
   "keywords": [

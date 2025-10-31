@@ -1,75 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テキサスポーカー</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div id="game-container">
-        <h1>テキサスポーカー</h1>
-        <div id="table-layout">
-            <div id="dealer-anchor" aria-hidden="true"></div>
-            <div id="community-cards">
-                <h2>コミュニティカード</h2>
-                <div id="community-hand"></div>
-            </div>
-            <div id="hands-row">
-                <div id="player-area">
-                    <h2>プレイヤーの手札</h2>
-                    <div id="player-hand"></div>
-                    <div id="player-hand-name" class="hand-name"></div>
-                    <div id="player-chips" class="chips">Chips: $1000</div>
-                </div>
-                <div id="ai-container">
-                    <h2>AI プレイヤー</h2>
-                    <!-- 単一AI表示用要素（既存 ui.js と互換） -->
-                    <div id="ai-hand" class="ai-hand"></div>
-                    <div id="ai-chips" class="chips">Chips: $1000</div>
-                </div>
-            </div>
-        </div>
-    <!-- <button id="deal-button">カードを配る</button> -->
-    <button id="call-button">コール</button>
-    <input type="number" id="raise-amount" min="1" value="50" style="width:80px;"> 
-    <button id="raise-button">レイズ</button>
-    <button id="fold-button">フォールド</button>
-    <button id="hand-chart-button" style="margin-left:8px;">役表</button>
-        <div id="pot">Pot: $0</div>
-    <div id="message"></div>
-    <button id="retry-button" style="display:none; margin-top:16px;">もう一度プレイ</button>
-    </div>
-    <script src="js/sound.js"></script>
-    <script src="js/deck.js"></script>
-    <script src="js/hand-evaluator.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/ai.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
-
-    <!-- Hand ranking modal -->
-    <div id="hand-chart-overlay" aria-hidden="true">
-        <div id="hand-chart">
-            <div class="hc-header">
-                <h3>役の強さ（強い順）</h3>
-                <button id="hand-chart-close" aria-label="閉じる">×</button>
-            </div>
-            <table class="hc-table">
-                <thead><tr><th>役名</th><th>説明</th></tr></thead>
-                <tbody>
-                    <tr><td>ストレートフラッシュ</td><td>同一スートで連続した5枚</td></tr>
-                    <tr><td>フォーカード</td><td>同ランク4枚</td></tr>
-                    <tr><td>フルハウス</td><td>スリーカード＋ワンペア</td></tr>
-                    <tr><td>フラッシュ</td><td>同一スート5枚</td></tr>
-                    <tr><td>ストレート</td><td>連続した5枚（スート無関係）</td></tr>
-                    <tr><td>スリーカード</td><td>同ランク3枚</td></tr>
-                    <tr><td>ツーペア</td><td>異なるペア2組</td></tr>
-                    <tr><td>ワンペア</td><td>同ランク2枚</td></tr>
-                    <tr><td>ハイカード</td><td>役なし。最も高いカードで比較</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</body>
-</html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="refresh" content="0; url=../index.html">
+        <title>Redirecting…</title>
+        <script>
+            location.replace("../index.html");
+        </script>
+    </head>
+    <body>
+        <p>Redirecting to <a href="../index.html">index.html</a>…</p>
+    </body>
+    </html>
