@@ -10,6 +10,51 @@ const ui = (() => {
         }
     }
 
+    function getFaceImageCandidates(val, suit) {
+        const s = String(suit).toLowerCase();
+        const r = String(val).toUpperCase();
+        const suitLetter = ({ hearts: 'H', diamonds: 'D', clubs: 'C', spades: 'S' })[s] || 'X';
+        const candidates = [];
+        // 1) Conventional naming: KH.png, QD.png, JC.png, etc.
+        candidates.push(`assets/facecards/${r}${suitLetter}.png`);
+        // 2) torannpu-illustNN.png mapping (J=11, Q=12, K=13; suits: hearts,diamonds,clubs,spades)
+        const rankNumber = ({ 'J': 11, 'Q': 12, 'K': 13 })[r];
+        if (rankNumber) {
+            // User-provided mapping:
+            // 11..13 = Spades, 24..26 = Clubs, 37..39 = Diamonds, 50..52 = Hearts
+            const suitIndex = ({ spades: 0, clubs: 1, diamonds: 2, hearts: 3 })[s];
+            if (typeof suitIndex === 'number') {
+                const num = suitIndex * 13 + rankNumber; // 11..13, 24..26, 37..39, 50..52
+                candidates.push(`assets/facecards/torannpu-illust${num}.png`);
+            }
+        }
+        return candidates;
+    }
+
+    function createFaceGraphicElement(val, suit) {
+        const wrap = document.createElement('div');
+        wrap.className = 'face-graphic';
+        // Prefer custom illustration image(s); fallback to SVG if all fail to load
+        const candidates = getFaceImageCandidates(val, suit);
+        const img = new Image();
+        img.className = 'face-illustration';
+        img.alt = `${val} of ${suit}`;
+        img.decoding = 'async';
+        img.loading = 'lazy';
+        let idx = 0;
+        const tryNext = () => {
+            if (idx >= candidates.length) {
+                wrap.innerHTML = buildFaceSVG(val, String(suit).toLowerCase());
+                return;
+            }
+            img.src = candidates[idx++];
+        };
+        img.onerror = () => tryNext();
+        tryNext();
+        wrap.appendChild(img);
+        return wrap;
+    }
+
     function createCardElement(card, faceDown = false) {
         const el = document.createElement('div');
         if (faceDown) {
@@ -21,22 +66,30 @@ const ui = (() => {
         el.className = 'card card--face';
         el.dataset.value = String(card.value).toUpperCase();
         el.dataset.suit = String(card.suit).toLowerCase();
-        const suitClass = `suit--${card.suit.toLowerCase()}`;
-        const top = document.createElement('div');
-        top.className = 'card__corner card__corner--top-left';
-        top.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
-        const bottom = document.createElement('div');
-        bottom.className = 'card__corner card__corner--bottom-right';
-        bottom.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
-            el.appendChild(top);
+    const suitClass = `suit--${card.suit.toLowerCase()}`;
+    const top = document.createElement('div');
+    top.className = 'card__corner card__corner--top-left';
+    top.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
+    const bottom = document.createElement('div');
+    bottom.className = 'card__corner card__corner--bottom-right';
+    bottom.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
+    el.appendChild(top);
 
             // Body: pips for 2-10, graphic face for A/J/Q/K
             const val = String(card.value).toUpperCase();
+            let imageOnly = false;
             if (['A','J','Q','K'].includes(val)) {
-                const wrap = document.createElement('div');
-                wrap.className = 'face-graphic';
-                wrap.innerHTML = buildFaceSVG(val, card.suit.toLowerCase());
-                el.appendChild(wrap);
+                if (['J','Q','K'].includes(val)) {
+                    // Image-only mode for face cards J/Q/K
+                    imageOnly = true;
+                    el.classList.add('card--image-only');
+                    el.appendChild(createFaceGraphicElement(val, card.suit));
+                } else {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'face-graphic';
+                    wrap.innerHTML = buildFaceSVG(val, card.suit.toLowerCase());
+                    el.appendChild(wrap);
+                }
             } else {
                 const pips = document.createElement('div');
                 pips.className = 'card__pips';
@@ -49,8 +102,12 @@ const ui = (() => {
                 });
                 el.appendChild(pips);
             }
-
-            el.appendChild(bottom);
+            // For image-only faces, hide corners (remove top, skip bottom)
+            if (imageOnly) {
+                if (top && top.parentNode === el) top.remove();
+            } else {
+                el.appendChild(bottom);
+            }
         return el;
     }
 
