@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <meta name="description" content="テキサスホールデムのブラウザゲーム。AI対戦、役一覧つき。">
     <meta name="robots" content="index,follow">
 </head>
+
 <body>
     <div id="game-container">
         <h1>テキサスポーカー</h1>
@@ -32,15 +34,16 @@
                 </div>
             </div>
         </div>
-    <!-- <button id="deal-button">カードを配る</button> -->
-    <button id="call-button">コール</button>
-    <input type="number" id="raise-amount" min="1" value="50" style="width:80px;"> 
-    <button id="raise-button">レイズ</button>
-    <button id="fold-button">フォールド</button>
-    <button id="hand-chart-button" style="margin-left:8px;">役表</button>
+        <!-- <button id="deal-button">カードを配る</button> -->
+        <button id="call-button">コール</button>
+        <input type="number" id="raise-amount" min="1" value="50" style="width:80px;">
+        <button id="raise-button">レイズ</button>
+        <button id="fold-button">フォールド</button>
+        <button id="hand-chart-button" style="margin-left:8px;">役表</button>
         <div id="pot">Pot: $0</div>
-    <div id="message"></div>
-    <button id="retry-button" style="display:none; margin-top:16px;">もう一度プレイ</button>
+        <div id="message"></div>
+        <button id="retry-button" style="display:none; margin-top:16px;">もう一度プレイ</button>
+        <button id="next-round-button" style="display:none; margin-top:12px;">次のラウンドへ移行</button>
     </div>
     <script src="src/js/sound.js"></script>
     <script src="src/js/deck.js"></script>
@@ -58,20 +61,53 @@
                 <button id="hand-chart-close" aria-label="閉じる">×</button>
             </div>
             <table class="hc-table">
-                <thead><tr><th>役名</th><th>説明</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>役名</th>
+                        <th>説明</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    <tr><td>ストレートフラッシュ</td><td>同一スートで連続した5枚</td></tr>
-                    <tr><td>フォーカード</td><td>同ランク4枚</td></tr>
-                    <tr><td>フルハウス</td><td>スリーカード＋ワンペア</td></tr>
-                    <tr><td>フラッシュ</td><td>同一スート5枚</td></tr>
-                    <tr><td>ストレート</td><td>連続した5枚（スート無関係）</td></tr>
-                    <tr><td>スリーカード</td><td>同ランク3枚</td></tr>
-                    <tr><td>ツーペア</td><td>異なるペア2組</td></tr>
-                    <tr><td>ワンペア</td><td>同ランク2枚</td></tr>
-                    <tr><td>ハイカード</td><td>役なし。最も高いカードで比較</td></tr>
+                    <tr>
+                        <td>ストレートフラッシュ</td>
+                        <td>同一スートで連続した5枚</td>
+                    </tr>
+                    <tr>
+                        <td>フォーカード</td>
+                        <td>同ランク4枚</td>
+                    </tr>
+                    <tr>
+                        <td>フルハウス</td>
+                        <td>スリーカード＋ワンペア</td>
+                    </tr>
+                    <tr>
+                        <td>フラッシュ</td>
+                        <td>同一スート5枚</td>
+                    </tr>
+                    <tr>
+                        <td>ストレート</td>
+                        <td>連続した5枚（スート無関係）</td>
+                    </tr>
+                    <tr>
+                        <td>スリーカード</td>
+                        <td>同ランク3枚</td>
+                    </tr>
+                    <tr>
+                        <td>ツーペア</td>
+                        <td>異なるペア2組</td>
+                    </tr>
+                    <tr>
+                        <td>ワンペア</td>
+                        <td>同ランク2枚</td>
+                    </tr>
+                    <tr>
+                        <td>ハイカード</td>
+                        <td>役なし。最も高いカードで比較</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </body>
+
 </html>

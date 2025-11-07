@@ -31,7 +31,8 @@
 }
 
 /* メッセージ（行動表示）をやや大きく */
-#message, .message {
+#message,
+.message {
     font-size: 1.3rem;
 }
 
@@ -53,11 +54,13 @@
     margin-bottom: 20px;
 }
 
-#player-area, #ai-container {
+#player-area,
+#ai-container {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
+
 /* ai container: lay out multiple ai-blocks horizontally */
 #ai-container {
     display: flex;
@@ -78,7 +81,9 @@
 }
 
 /* Hand container: show cards horizontally and center */
-#player-hand, .ai-hand, #community-hand {
+#player-hand,
+.ai-hand,
+#community-hand {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -94,6 +99,7 @@
     align-items: center;
     margin: 6px 0;
 }
+
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
@@ -112,7 +118,8 @@ h1 {
     margin: 20px 0;
 }
 
-.table th, .table td {
+.table th,
+.table td {
     border: 1px solid #ccc;
     padding: 10px;
     text-align: center;
@@ -132,23 +139,25 @@ h1 {
 }
 
 .card {
-    width: 88px;   /* was 80px */
-    height: 121px; /* was 110px */
+    width: 88px;
+    /* was 80px */
+    height: 121px;
+    /* was 110px */
     border-radius: 6px;
     border: 1px solid #bbb;
     display: inline-block;
     margin: 6px;
     vertical-align: middle;
     background-color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     position: relative;
     overflow: hidden;
 }
 
 .card--face {
     background:
-      radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.9) 0%, rgba(245,245,245,0.9) 60%, rgba(238,238,238,0.95) 100%),
-      repeating-linear-gradient(90deg, rgba(0,0,0,0.02) 0 2px, rgba(0,0,0,0.0) 2px 4px);
+        radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, 0.9) 0%, rgba(245, 245, 245, 0.9) 60%, rgba(238, 238, 238, 0.95) 100%),
+        repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.02) 0 2px, rgba(0, 0, 0, 0.0) 2px 4px);
     position: relative;
 }
 
@@ -158,7 +167,7 @@ h1 {
     position: absolute;
     inset: 4px;
     border-radius: 4px;
-    border: 1px solid rgba(0,0,0,0.12);
+    border: 1px solid rgba(0, 0, 0, 0.12);
     pointer-events: none;
 }
 
@@ -170,7 +179,7 @@ h1 {
     left: -40%;
     width: 60%;
     height: 160%;
-    background: linear-gradient(65deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.0) 90%);
+    background: linear-gradient(65deg, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.18) 45%, rgba(255, 255, 255, 0.0) 90%);
     transform: rotate(10deg);
     opacity: 0.0;
     transition: opacity 220ms ease;
@@ -182,12 +191,12 @@ h1 {
 }
 
 .card--back {
-        background:
-            linear-gradient(45deg, rgba(255,255,255,0.06) 25%, transparent 25%) 0 0/10px 10px,
-            linear-gradient(-45deg, rgba(255,255,255,0.06) 25%, transparent 25%) 0 0/10px 10px,
-            linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.06) 75%) 0 0/10px 10px,
-            linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.06) 75%) 0 0/10px 10px,
-            #b01616;
+    background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%) 0 0/10px 10px,
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%) 0 0/10px 10px,
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.06) 75%) 0 0/10px 10px,
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.06) 75%) 0 0/10px 10px,
+        #b01616;
 }
 
 .card__corner {
@@ -210,8 +219,15 @@ h1 {
     transform: rotate(180deg);
 }
 
-.suit--hearts, .suit--diamonds { color: #b00; }
-.suit--clubs, .suit--spades { color: #000; }
+.suit--hearts,
+.suit--diamonds {
+    color: #b00;
+}
+
+.suit--clubs,
+.suit--spades {
+    color: #000;
+}
 
 .card__center {
     position: absolute;
@@ -240,7 +256,7 @@ h1 {
 #hand-chart-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0, 0, 0, 0.45);
     display: none;
     align-items: center;
     justify-content: center;
@@ -253,7 +269,7 @@ h1 {
     max-height: 80vh;
     overflow: auto;
     border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     padding: 14px 16px 18px;
 }
 
@@ -274,9 +290,21 @@ h1 {
     cursor: pointer;
 }
 
-.hc-table { width: 100%; border-collapse: collapse; }
-.hc-table th, .hc-table td { border: 1px solid #e0e0e0; padding: 10px; text-align: left; }
-.hc-table thead th { background: #fafafa; }
+.hc-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hc-table th,
+.hc-table td {
+    border: 1px solid #e0e0e0;
+    padding: 10px;
+    text-align: left;
+}
+
+.hc-table thead th {
+    background: #fafafa;
+}
 
 /* ====== Realistic pips layout ====== */
 .card__pips {
@@ -291,17 +319,42 @@ h1 {
     line-height: 1;
 }
 
-.pip--flip { transform: translate(-50%, -50%) rotate(180deg); }
+.pip--flip {
+    transform: translate(-50%, -50%) rotate(180deg);
+}
 
 /* 5-row x 3-col anchors */
-.r1 { top: 10%; }
-.r2 { top: 30%; }
-.r3 { top: 50%; }
-.r4 { top: 70%; }
-.r5 { top: 90%; }
-.c1 { left: 22%; }
-.c2 { left: 50%; }
-.c3 { left: 78%; }
+.r1 {
+    top: 10%;
+}
+
+.r2 {
+    top: 30%;
+}
+
+.r3 {
+    top: 50%;
+}
+
+.r4 {
+    top: 70%;
+}
+
+.r5 {
+    top: 90%;
+}
+
+.c1 {
+    left: 22%;
+}
+
+.c2 {
+    left: 50%;
+}
+
+.c3 {
+    left: 78%;
+}
 
 /* Face cards: big letter figure */
 .face-figure {
@@ -344,9 +397,33 @@ h1 {
 }
 
 /* Image-only face cards (J/Q/K): remove inner border and tighten padding */
-.card.card--image-only.card--face::after { display: none; }
-.card.card--image-only .face-graphic { width: 82%; height: 82%; }
-.card.card--image-only .face-illustration { object-fit: cover; }
+.card.card--image-only.card--face::after {
+    display: none;
+}
+
+.card.card--image-only .face-graphic {
+    width: 98%;
+    height: 98%;
+}
+
+.card.card--image-only .face-illustration {
+    object-fit: contain;
+}
+
+/* Image-only: 画像の後ろをすべて消す（背景・枠・光沢・角・影） */
+.card.card--image-only {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.card.card--image-only.card--face::before {
+    display: none !important;
+}
+
+.card.card--image-only .card__corner {
+    display: none !important;
+}
 
 /* Face illustration image (optional, overrides SVG) */
 .face-graphic .face-illustration {
@@ -354,19 +431,32 @@ h1 {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
 }
 
 /* ====== Animations: dealing & flipping ====== */
 /* Provide perspective to enhance flip effect */
-#player-hand, .ai-hand, #community-hand {
+#player-hand,
+.ai-hand,
+#community-hand {
     perspective: 800px;
 }
 
 @keyframes dealIn {
-    0% { transform: translateY(-40px) scale(0.9) rotate(-6deg); opacity: 0; }
-    60% { transform: translateY(4px) scale(1.02) rotate(-1deg); opacity: 1; }
-    100% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+    0% {
+        transform: translateY(-40px) scale(0.9) rotate(-6deg);
+        opacity: 0;
+    }
+
+    60% {
+        transform: translateY(4px) scale(1.02) rotate(-1deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(0) scale(1) rotate(0);
+        opacity: 1;
+    }
 }
 
 .card.deal-in {
@@ -375,8 +465,13 @@ h1 {
 }
 
 @keyframes flipCardIn {
-    0% { transform: rotateY(90deg); }
-    100% { transform: rotateY(0); }
+    0% {
+        transform: rotateY(90deg);
+    }
+
+    100% {
+        transform: rotateY(0);
+    }
 }
 
 .card.flip-in {
@@ -388,7 +483,7 @@ h1 {
 /* Subtle hover to feel interactive (optional) */
 .card.card--face:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
     transition: transform 140ms ease, box-shadow 140ms ease;
 }
 
@@ -406,9 +501,9 @@ h1 {
 /* Dealing flight (JS-driven FLIP) */
 .card.deal-flight {
     will-change: transform, opacity;
-    transition: transform 420ms cubic-bezier(.17,.67,.17,1.02), opacity 420ms ease;
+    transition: transform 420ms cubic-bezier(.17, .67, .17, 1.02), opacity 420ms ease;
 }
 
 .card.deal-flight.deal-trail {
-    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
 }

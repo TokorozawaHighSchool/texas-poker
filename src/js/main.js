@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const foldBtn = document.getElementById('fold-button');
     const raiseAmountInput = document.getElementById('raise-amount');
     const retryBtn = document.getElementById('retry-button');
+    const nextRoundBtn = document.getElementById('next-round-button');
     const chartBtn = document.getElementById('hand-chart-button');
     const chartOverlay = document.getElementById('hand-chart-overlay');
     const chartClose = document.getElementById('hand-chart-close');
@@ -59,13 +60,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (nextRoundBtn) {
+        nextRoundBtn.addEventListener('click', () => {
+            if (window.Sound) window.Sound.click();
+            const game = window._gameInstance;
+            if (!game) return;
+            // 新しいハンドを配る
+            game.dealCards();
+            const np = game.players[0];
+            const na = game.players[1];
+            UI.updatePlayerHand(np.hand);
+            if (na) UI.updateAIHand(na.hand, true);
+            UI.updateTableCards(game.communityCards);
+            UI.updateChips(np.chips, na ? na.chips : 0, game.pot);
+            const aiPlayersNext = game.players.slice(1).map(p => ({ chips: p.chips }));
+            UI.renderAIPlayers(aiPlayersNext);
+            // 役名を初期化＆表示
+            UI.updatePlayerHandName('');
+            if (window.evaluateHandName) {
+                const cards7b = [...np.hand, ...game.communityCards];
+                UI.updatePlayerHandName(window.evaluateHandName(cards7b));
+            }
+            // ボタンを隠す
+            nextRoundBtn.style.display = 'none';
+            UI.showMessage('');
+        });
+    }
+
     // Hand chart open/close
-    function openChart(){ if (chartOverlay){ chartOverlay.style.display = 'flex'; if (window.Sound) window.Sound.click(); } }
-    function closeChart(){ if (chartOverlay){ chartOverlay.style.display = 'none'; if (window.Sound) window.Sound.click(); } }
+    function openChart() { if (chartOverlay) { chartOverlay.style.display = 'flex'; if (window.Sound) window.Sound.click(); } }
+    function closeChart() { if (chartOverlay) { chartOverlay.style.display = 'none'; if (window.Sound) window.Sound.click(); } }
     if (chartBtn) chartBtn.addEventListener('click', openChart);
     if (chartClose) chartClose.addEventListener('click', closeChart);
-    if (chartOverlay) chartOverlay.addEventListener('click', (e)=>{ if (e.target === chartOverlay) closeChart(); });
-    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeChart(); });
+    if (chartOverlay) chartOverlay.addEventListener('click', (e) => { if (e.target === chartOverlay) closeChart(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChart(); });
 
     callBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('call'); });
     raiseBtn.addEventListener('click', () => {
@@ -166,19 +194,32 @@ function playerAction(action, amount = 0) {
                 const aiPlayers = game.players.slice(1).map(p => ({ chips: p.chips }));
                 UI.renderAIPlayers(aiPlayers);
             }
-            game.players.forEach((pl, i) => {
-                if (i === 0) {
-                    UI.updateChips(pl.chips, null, game.pot);
-                } else {
-                    const faceDown = !!pl.folded; // 伏せ：フォールド者のみ
-                    UI.updateAIByIndex(i - 1, pl.hand, faceDown, pl.chips);
-                    // ショーダウン時に役名を表示（フォールドしていないAIのみ）
-                    if (!pl.folded && window.evaluateHandName) {
-                        const name = window.evaluateHandName([...pl.hand, ...game.communityCards]);
-                        UI.updateAIHandNameByIndex(i - 1, name);
+            (async () => {
+                let revealIdx = 0;
+                for (let i = 0; i < game.players.length; i++) {
+                    const pl = game.players[i];
+                    if (i === 0) {
+                        UI.updateChips(pl.chips, null, game.pot);
+                    } else {
+                        const idx = i - 1;
+                        if (pl.folded) {
+                            // フォールドしているAIは伏せたまま
+                            UI.updateAIByIndex(idx, pl.hand, true, pl.chips);
+                        } else {
+                            // 一度伏せてから順番にめくる
+                            UI.updateAIByIndex(idx, pl.hand, true, pl.chips);
+                            const delayBase = 200; // 次のAIをめくり始める間隔
+                            const perCard = 240;   // 一人の2枚を順次めくる間隔
+                            await UI.revealAIHandByIndex(idx, pl.hand, { startDelay: revealIdx * delayBase, perCardDelay: perCard });
+                            if (window.evaluateHandName) {
+                                const name = window.evaluateHandName([...pl.hand, ...game.communityCards]);
+                                UI.updateAIHandNameByIndex(idx, name);
+                            }
+                            revealIdx++;
+                        }
                     }
                 }
-            });
+            })();
 
             const retryBtn = document.getElementById('retry-button');
             if (game.players.length === 1) {
@@ -206,25 +247,10 @@ function playerAction(action, amount = 0) {
         }
         finalizeShowdown(result);
 
-        // 次のハンドへ（ゲーム継続可能な場合）
-        setTimeout(() => {
-            if (game.players.length === 1 || game.players[0].chips <= 0) return;
-            game.dealCards();
-            const np = game.players[0];
-            const na = game.players[1];
-            UI.updatePlayerHand(np.hand);
-            if (na) UI.updateAIHand(na.hand, true);
-            UI.updateTableCards(game.communityCards);
-            UI.updateChips(np.chips, na ? na.chips : 0, game.pot);
-            const aiPlayersNext = game.players.slice(1).map(p => ({ chips: p.chips }));
-            UI.renderAIPlayers(aiPlayersNext);
-            // 新ハンドで役名クリア＆プレイヤー役名更新
-            UI.updatePlayerHandName('');
-            if (window.evaluateHandName) {
-                const cards7b = [...np.hand, ...game.communityCards];
-                UI.updatePlayerHandName(window.evaluateHandName(cards7b));
-            }
-        }, 1800);
+        // 次のハンドへはボタン操作で進む（勝敗が確定していない場合に表示）
+        const canContinue = !(game.players.length === 1 || game.players[0].chips <= 0);
+        const btn = document.getElementById('next-round-button');
+        if (canContinue && btn) btn.style.display = '';
     }
 }
 // main.js only wires UI to the global Game/Deck/AI implemented in other files

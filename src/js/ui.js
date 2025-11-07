@@ -1,4 +1,6 @@
 const ui = (() => {
+    // Simple in-memory cache: key = `${rank}_${suit}`, value = { src: string|null, resolved: boolean }
+    const imageCache = new Map();
     // helper to convert suit name to symbol
     function suitToSymbol(suit) {
         switch (suit.toLowerCase()) {
@@ -10,23 +12,31 @@ const ui = (() => {
         }
     }
 
-    function getFaceImageCandidates(val, suit) {
+    function getCardImageCandidates(val, suit) {
         const s = String(suit).toLowerCase();
         const r = String(val).toUpperCase();
         const suitLetter = ({ hearts: 'H', diamonds: 'D', clubs: 'C', spades: 'S' })[s] || 'X';
         const candidates = [];
-        // 1) Conventional naming: KH.png, QD.png, JC.png, etc.
-        candidates.push(`assets/facecards/${r}${suitLetter}.png`);
-        // 2) torannpu-illustNN.png mapping (J=11, Q=12, K=13; suits: hearts,diamonds,clubs,spades)
-        const rankNumber = ({ 'J': 11, 'Q': 12, 'K': 13 })[r];
-        if (rankNumber) {
-            // User-provided mapping:
-            // 11..13 = Spades, 24..26 = Clubs, 37..39 = Diamonds, 50..52 = Hearts
-            const suitIndex = ({ spades: 0, clubs: 1, diamonds: 2, hearts: 3 })[s];
-            if (typeof suitIndex === 'number') {
-                const num = suitIndex * 13 + rankNumber; // 11..13, 24..26, 37..39, 50..52
-                candidates.push(`assets/facecards/torannpu-illust${num}.png`);
-            }
+        const push = (p) => { if (p && !candidates.includes(p)) candidates.push(p); };
+        // 1) Conventional naming for all ranks: AH.png, 10S.png, 2D.png, JC.png ... with multiple extensions
+        const base1 = `assets/facecards/${r}${suitLetter}`;
+        ['.png', '.webp', '.svg'].forEach(ext => push(base1 + ext));
+        // 2) Lowercase variant
+        const base1l = `assets/facecards/${r.toLowerCase()}${suitLetter.toLowerCase()}`;
+        ['.png', '.webp', '.svg'].forEach(ext => push(base1l + ext));
+        // 3) Word-based naming: ace_hearts.png, 2_spades.webp, jack_diamonds.svg
+        const rankWord = ({
+            'A': 'ace', 'K': 'king', 'Q': 'queen', 'J': 'jack', '10': '10', '9': '9', '8': '8', '7': '7', '6': '6', '5': '5', '4': '4', '3': '3', '2': '2'
+        })[r] || r.toLowerCase();
+        const base2 = `assets/facecards/${rankWord}_${s}.`;
+        ['png', 'webp', 'svg'].forEach(e => push(base2 + e));
+        // 4) torannpu-illustNN.png style（既知のJ/Q/Kはもちろん、A/2-10も推測値で試す）
+        const rankToNum = ({ 'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13 })[r];
+        const suitIndex = ({ spades: 0, clubs: 1, diamonds: 2, hearts: 3 })[s];
+        if (typeof rankToNum === 'number' && typeof suitIndex === 'number') {
+            const num = suitIndex * 13 + rankToNum; // 1..52 を想定
+            push(`assets/facecards/torannpu-illust${num}.png`);
+            push(`assets/facecards/torannpu-illust${num}.webp`);
         }
         return candidates;
     }
@@ -35,7 +45,7 @@ const ui = (() => {
         const wrap = document.createElement('div');
         wrap.className = 'face-graphic';
         // Prefer custom illustration image(s); fallback to SVG if all fail to load
-        const candidates = getFaceImageCandidates(val, suit);
+        const candidates = getCardImageCandidates(val, suit);
         const img = new Image();
         img.className = 'face-illustration';
         img.alt = `${val} of ${suit}`;
@@ -55,6 +65,125 @@ const ui = (() => {
         return wrap;
     }
 
+    function buildGenericSVG(val, suit) {
+        const s = String(suit).toLowerCase();
+        const color = (s === 'hearts' || s === 'diamonds') ? '#b00' : '#000';
+        const suitChar = ({ hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' })[s] || '?';
+        const label = String(val).toUpperCase();
+        return `
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+        <filter id="drops" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity="0.2"/>
+        </filter>
+    </defs>
+    <text x="50" y="48" text-anchor="middle" font-size="34" font-family="Georgia, 'Times New Roman', Times, serif" fill="#333">${label}</text>
+    <text x="50" y="78" text-anchor="middle" font-size="40" font-family="Georgia, 'Times New Roman', Times, serif" fill="${color}" filter="url(#drops)">${suitChar}</text>
+</svg>`;
+    }
+
+    function createCardGraphicElement(val, suit) {
+        const wrap = document.createElement('div');
+        wrap.className = 'face-graphic';
+        const candidates = getCardImageCandidates(val, suit);
+        const img = new Image();
+        img.className = 'face-illustration';
+        img.alt = `${val} of ${suit}`;
+        img.decoding = 'async';
+        img.loading = 'lazy';
+        let idx = 0;
+        const key = `${String(val).toUpperCase()}_${String(suit).toLowerCase()}`;
+        // Use cached successful src if available
+        const cached = imageCache.get(key);
+        if (cached && cached.resolved) {
+            if (cached.src) {
+                img.src = cached.src;
+                wrap.appendChild(img);
+                return wrap;
+            }
+            // cached resolved but no src -> immediately fallback
+            const v = String(val).toUpperCase();
+            const s = String(suit).toLowerCase();
+            wrap.innerHTML = ['J', 'Q', 'K', 'A'].includes(v) ? buildFaceSVG(v, s) : buildGenericSVG(v, s);
+            return wrap;
+        }
+        const tryNext = () => {
+            if (idx >= candidates.length) {
+                const v = String(val).toUpperCase();
+                const s = String(suit).toLowerCase();
+                imageCache.set(key, { src: null, resolved: true });
+                // Fallback: 顔札とAは既存のSVG、それ以外は汎用SVG
+                wrap.innerHTML = ['J', 'Q', 'K', 'A'].includes(v) ? buildFaceSVG(v, s) : buildGenericSVG(v, s);
+                return;
+            }
+            img.src = candidates[idx++];
+        };
+        img.onerror = () => tryNext();
+        img.onload = () => { imageCache.set(key, { src: img.src, resolved: true }); };
+        tryNext();
+        wrap.appendChild(img);
+        return wrap;
+    }
+
+    function preloadCardImage(val, suit) {
+        const key = `${String(val).toUpperCase()}_${String(suit).toLowerCase()}`;
+        const cached = imageCache.get(key);
+        if (cached && cached.resolved) return Promise.resolve(cached.src);
+        return new Promise((resolve) => {
+            const list = getCardImageCandidates(val, suit);
+            let i = 0;
+            const test = new Image();
+            test.decoding = 'async';
+            test.loading = 'eager';
+            const next = () => {
+                if (i >= list.length) {
+                    imageCache.set(key, { src: null, resolved: true });
+                    resolve(null);
+                    return;
+                }
+                test.src = list[i++];
+            };
+            test.onload = () => { imageCache.set(key, { src: test.src, resolved: true }); resolve(test.src); };
+            test.onerror = () => next();
+            next();
+        });
+    }
+
+    function createIllustrationOrPips(val, suit, suitClass) {
+        // 画像があればイラスト、無ければピップを返すラッパー要素
+        const placeholder = document.createElement('div');
+        placeholder.className = 'face-graphic';
+        const candidates = getCardImageCandidates(val, suit);
+        const img = new Image();
+        img.className = 'face-illustration';
+        img.alt = `${val} of ${suit}`;
+        img.decoding = 'async';
+        img.loading = 'lazy';
+        let tried = 0;
+        const usePips = () => {
+            // 置換：ピップ描画
+            const pips = document.createElement('div');
+            pips.className = 'card__pips';
+            const positions = getPipPositions(val);
+            positions.forEach(pos => {
+                const pip = document.createElement('div');
+                pip.className = `pip ${suitClass} ${pos.r} ${pos.c} ${pos.flip ? 'pip--flip' : ''}`.trim();
+                pip.textContent = suitToSymbol(suit);
+                pips.appendChild(pip);
+            });
+            placeholder.replaceWith(pips);
+        };
+        const tryNext = () => {
+            if (tried >= candidates.length) { usePips(); return; }
+            img.src = candidates[tried++];
+        };
+        img.onerror = () => tryNext();
+        img.onload = () => { /* keep image */ };
+        tryNext();
+        placeholder.appendChild(img);
+        return placeholder;
+    }
+
     function createCardElement(card, faceDown = false) {
         const el = document.createElement('div');
         if (faceDown) {
@@ -66,55 +195,33 @@ const ui = (() => {
         el.className = 'card card--face';
         el.dataset.value = String(card.value).toUpperCase();
         el.dataset.suit = String(card.suit).toLowerCase();
-    const suitClass = `suit--${card.suit.toLowerCase()}`;
-    const top = document.createElement('div');
-    top.className = 'card__corner card__corner--top-left';
-    top.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
-    const bottom = document.createElement('div');
-    bottom.className = 'card__corner card__corner--bottom-right';
-    bottom.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
-    el.appendChild(top);
+        const suitClass = `suit--${card.suit.toLowerCase()}`;
+        const top = document.createElement('div');
+        top.className = 'card__corner card__corner--top-left';
+        top.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
+        const bottom = document.createElement('div');
+        bottom.className = 'card__corner card__corner--bottom-right';
+        bottom.innerHTML = `<div class="card__value">${card.value}</div><div class="card__suit ${suitClass}">${suitToSymbol(card.suit)}</div>`;
+        el.appendChild(top);
 
-            // Body: pips for 2-10, graphic face for A/J/Q/K
-            const val = String(card.value).toUpperCase();
-            let imageOnly = false;
-            if (['A','J','Q','K'].includes(val)) {
-                if (['J','Q','K'].includes(val)) {
-                    // Image-only mode for face cards J/Q/K
-                    imageOnly = true;
-                    el.classList.add('card--image-only');
-                    el.appendChild(createFaceGraphicElement(val, card.suit));
-                } else {
-                    const wrap = document.createElement('div');
-                    wrap.className = 'face-graphic';
-                    wrap.innerHTML = buildFaceSVG(val, card.suit.toLowerCase());
-                    el.appendChild(wrap);
-                }
-            } else {
-                const pips = document.createElement('div');
-                pips.className = 'card__pips';
-                const positions = getPipPositions(val);
-                positions.forEach(pos => {
-                    const pip = document.createElement('div');
-                    pip.className = `pip ${suitClass} ${pos.r} ${pos.c} ${pos.flip ? 'pip--flip' : ''}`.trim();
-                    pip.textContent = suitToSymbol(card.suit);
-                    pips.appendChild(pip);
-                });
-                el.appendChild(pips);
-            }
-            // For image-only faces, hide corners (remove top, skip bottom)
-            if (imageOnly) {
-                if (top && top.parentNode === el) top.remove();
-            } else {
-                el.appendChild(bottom);
-            }
+        // Body: すべて画像のみ（全ランク image-only）。
+        const val = String(card.value).toUpperCase();
+        let imageOnly = true;
+        el.classList.add('card--image-only');
+        el.appendChild(createCardGraphicElement(val, card.suit));
+        // For image-only faces, hide corners (remove top, skip bottom)
+        if (imageOnly) {
+            if (top && top.parentNode === el) top.remove();
+        } else {
+            el.appendChild(bottom);
+        }
         return el;
     }
 
     // Cubic bezier helper
     function bezierPoint(p0, p1, p2, p3, t) {
         const it = 1 - t;
-        return it*it*it*p0 + 3*it*it*t*p1 + 3*it*t*t*p2 + t*t*t*p3;
+        return it * it * it * p0 + 3 * it * it * t * p1 + 3 * it * t * t * p2 + t * t * t * p3;
     }
 
     // Animate a deal along a curved path from dealer anchor to element's final position
@@ -122,8 +229,8 @@ const ui = (() => {
         if (!anchor || !el || !el.animate) return false;
         const a = anchor.getBoundingClientRect();
         const e = el.getBoundingClientRect();
-        const start = { x: a.left + a.width/2, y: a.top + a.height/2 };
-        const end = { x: e.left + e.width/2, y: e.top + e.height/2 };
+        const start = { x: a.left + a.width / 2, y: a.top + a.height / 2 };
+        const end = { x: e.left + e.width / 2, y: e.top + e.height / 2 };
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const curve = Math.max(90, Math.hypot(dx, dy) * 0.22);
@@ -145,34 +252,34 @@ const ui = (() => {
         return true;
     }
 
-        function getPipPositions(val) {
-            // returns array of {r: 'rX', c: 'cY', flip?: true}
-            // layout anchors: rows r1..r5, cols c1..c3
-            const n = (v => ({
-                'A':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10
-            })[v] || 1)(String(val));
-            const mid = { r:'r3', c:'c2' };
-            const topMid = { r:'r2', c:'c2' };
-            const botMid = { r:'r4', c:'c2', flip:true };
-            const topPair = [{ r:'r2', c:'c1' }, { r:'r2', c:'c3' }];
-            const botPair = [{ r:'r4', c:'c1', flip:true }, { r:'r4', c:'c3', flip:true }];
-            const topEdge = [{ r:'r1', c:'c1' }, { r:'r1', c:'c3' }];
-            const botEdge = [{ r:'r5', c:'c1', flip:true }, { r:'r5', c:'c3', flip:true }];
+    function getPipPositions(val) {
+        // returns array of {r: 'rX', c: 'cY', flip?: true}
+        // layout anchors: rows r1..r5, cols c1..c3
+        const n = (v => ({
+            'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10
+        })[v] || 1)(String(val));
+        const mid = { r: 'r3', c: 'c2' };
+        const topMid = { r: 'r2', c: 'c2' };
+        const botMid = { r: 'r4', c: 'c2', flip: true };
+        const topPair = [{ r: 'r2', c: 'c1' }, { r: 'r2', c: 'c3' }];
+        const botPair = [{ r: 'r4', c: 'c1', flip: true }, { r: 'r4', c: 'c3', flip: true }];
+        const topEdge = [{ r: 'r1', c: 'c1' }, { r: 'r1', c: 'c3' }];
+        const botEdge = [{ r: 'r5', c: 'c1', flip: true }, { r: 'r5', c: 'c3', flip: true }];
 
-            switch (String(val).toUpperCase()) {
-                case 'A': return [mid];
-                case '2': return [topMid, botMid];
-                case '3': return [topMid, mid, botMid];
-                case '4': return [...topPair, ...botPair];
-                case '5': return [...topPair, mid, ...botPair];
-                case '6': return [...topPair, ...botPair, { r:'r3', c:'c1' }, { r:'r3', c:'c3', flip:true }];
-                case '7': return [...topPair, ...botPair, { r:'r3', c:'c1' }, { r:'r3', c:'c3', flip:true }, topMid];
-                case '8': return [...topEdge, ...botEdge, ...topPair, ...botPair];
-                case '9': return [...topEdge, ...botEdge, ...topPair, ...botPair, mid];
-                case '10': return [...topEdge, ...botEdge, ...topPair, ...botPair, topMid, botMid];
-                default: return [mid];
-            }
+        switch (String(val).toUpperCase()) {
+            case 'A': return [mid];
+            case '2': return [topMid, botMid];
+            case '3': return [topMid, mid, botMid];
+            case '4': return [...topPair, ...botPair];
+            case '5': return [...topPair, mid, ...botPair];
+            case '6': return [...topPair, ...botPair, { r: 'r3', c: 'c1' }, { r: 'r3', c: 'c3', flip: true }];
+            case '7': return [...topPair, ...botPair, { r: 'r3', c: 'c1' }, { r: 'r3', c: 'c3', flip: true }, topMid];
+            case '8': return [...topEdge, ...botEdge, ...topPair, ...botPair];
+            case '9': return [...topEdge, ...botEdge, ...topPair, ...botPair, mid];
+            case '10': return [...topEdge, ...botEdge, ...topPair, ...botPair, topMid, botMid];
+            default: return [mid];
         }
+    }
 
     function flipCard(cardElement, card, toFaceDown) {
         cardElement.classList.add('flip-in');
@@ -192,12 +299,12 @@ const ui = (() => {
         }
     }
 
-        function buildFaceSVG(val, suit) {
-                const color = (suit === 'hearts' || suit === 'diamonds') ? '#b00' : '#000';
-                const suitChar = (s => ({hearts:'♥', diamonds:'♦', clubs:'♣', spades:'♠'})[s] || '?')(suit);
-                        if (val === 'A') {
-                                // Large suit emblem with laurel
-                                return `
+    function buildFaceSVG(val, suit) {
+        const color = (suit === 'hearts' || suit === 'diamonds') ? '#b00' : '#000';
+        const suitChar = (s => ({ hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' })[s] || '?')(suit);
+        if (val === 'A') {
+            // Large suit emblem with laurel
+            return `
         <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
                 <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
@@ -220,10 +327,10 @@ const ui = (() => {
                 </g>
             </g>
         </svg>`;
-                }
-                // Simple stylized portraits for J/Q/K using geometric shapes
-                if (val === 'J') {
-                        return `
+        }
+        // Simple stylized portraits for J/Q/K using geometric shapes
+        if (val === 'J') {
+            return `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <circle cx="50" cy="30" r="13" fill="#f2d3b1" stroke="#333" stroke-width="1"/>
             <path d="M37 26 q13 -12 26 0" fill="#3e2723"/>
@@ -232,9 +339,9 @@ const ui = (() => {
     <path d="M35 78 q15 8 30 0" fill="none" stroke="#333" stroke-width="3"/>
     <text x="50" y="94" text-anchor="middle" font-size="18" font-family="Georgia, 'Times New Roman', Times, serif" fill="#333">J</text>
 </svg>`;
-                }
-                if (val === 'Q') {
-                        return `
+        }
+        if (val === 'Q') {
+            return `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <circle cx="50" cy="32" r="13" fill="#f2d3b1" stroke="#333" stroke-width="1"/>
             <polygon points="50,12 58,26 42,26" fill="#d4af37" stroke="#8a6d1d" stroke-width="1"/>
@@ -243,9 +350,9 @@ const ui = (() => {
             <rect x="32" y="54" width="36" height="8" rx="4" fill="#fff" opacity="0.25"/>
     <text x="50" y="94" text-anchor="middle" font-size="18" font-family="Georgia, 'Times New Roman', Times, serif" fill="#333">Q</text>
 </svg>`;
-                }
-                // K
-                return `
+        }
+        // K
+        return `
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <circle cx="50" cy="30" r="13" fill="#f2d3b1" stroke="#333" stroke-width="1"/>
             <path d="M39 26 l22 0 l-2 4 l-18 0 z" fill="#d4af37" stroke="#8a6d1d" stroke-width="1"/>
@@ -254,7 +361,7 @@ const ui = (() => {
             <circle cx="66" cy="62" r="2" fill="#c62828"/>
     <text x="50" y="94" text-anchor="middle" font-size="18" font-family="Georgia, 'Times New Roman', Times, serif" fill="#333">K</text>
 </svg>`;
-        }
+    }
 
     // render with diffing + staggered deal-in for new cards
     function renderCardsWithAnimation(container, cards, { faceDown = false, stagger = 80 } = {}) {
@@ -329,12 +436,12 @@ const ui = (() => {
         container.appendChild(row);
     };
 
-    function updatePlayerHandName(text){
+    function updatePlayerHandName(text) {
         const el = document.getElementById('player-hand-name');
         if (el) el.textContent = text || '';
     }
 
-    function updateAIHandNameByIndex(index, text){
+    function updateAIHandNameByIndex(index, text) {
         const el = document.getElementById(`ai-${index}-hand-name`);
         if (el) el.textContent = text || '';
     }
@@ -345,6 +452,42 @@ const ui = (() => {
         if (chipsEl && typeof chips !== 'undefined') chipsEl.textContent = `Chips: $${chips}`;
         renderCardsWithAnimation(handEl, aiHand, { faceDown, stagger: 90 });
     };
+
+    // Showdown reveal: flip AI cards face-up sequentially
+    async function revealAIHandByIndex(index, cards, options = {}) {
+        const perCardDelay = typeof options.perCardDelay === 'number' ? options.perCardDelay : 220;
+        const startDelay = typeof options.startDelay === 'number' ? options.startDelay : 0;
+        const handEl = document.getElementById(`ai-${index}-hand`);
+        if (!handEl) return Promise.resolve();
+        // 完全同期: 画像を全てプリロードし終えるまで待つ
+        try { await Promise.all(cards.map(c => preloadCardImage(c.value, c.suit))); } catch (_) { }
+        // Ensure correct number of face-down cards exist before flipping
+        if (handEl.children.length !== cards.length) {
+            renderCardsWithAnimation(handEl, cards, { faceDown: true, stagger: 0 });
+        } else {
+            // If any is already face-up, reset to back to get a proper flip animation
+            for (let i = 0; i < handEl.children.length; i++) {
+                const el = handEl.children[i];
+                if (!el.classList.contains('card--back')) {
+                    const back = createCardElement(cards[i], true);
+                    el.replaceWith(back);
+                }
+            }
+        }
+        // Flip each card with a slight delay
+        for (let i = 0; i < cards.length; i++) {
+            const el = handEl.children[i];
+            const delay = startDelay + i * perCardDelay;
+            setTimeout(() => {
+                flipCard(el, cards[i], false);
+            }, delay);
+        }
+        // すべてのフリップが終わるまで待ってからresolve
+        const cssFlipMs = 350; // styles.css の flipCardIn と合わせる
+        const buffer = 80;
+        const total = startDelay + (cards.length > 0 ? (cards.length - 1) * perCardDelay : 0) + cssFlipMs + buffer;
+        return new Promise(resolve => setTimeout(resolve, total));
+    }
 
     const updateChips = (playerChips, aiChips, potAmount) => {
         const playerChipsEl = document.getElementById('player-chips');
@@ -388,9 +531,10 @@ const ui = (() => {
         updateChips,
         updatePot,
         showMessage,
-    resetUI,
-    updatePlayerHandName,
-    updateAIHandNameByIndex
+        resetUI,
+        updatePlayerHandName,
+        updateAIHandNameByIndex,
+        revealAIHandByIndex,
     };
 })();
 
