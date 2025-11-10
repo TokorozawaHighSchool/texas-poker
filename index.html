@@ -11,8 +11,29 @@
 </head>
 
 <body>
-    <div id="game-container">
-        <h1>テキサスポーカー</h1>
+    <!-- Title Screen -->
+    <div id="title-screen" aria-modal="true" role="dialog">
+        <div class="title-panel">
+            <h1 class="title-logo">テキサスポーカー</h1>
+            <fieldset class="mode-select">
+                <legend>ゲームモード</legend>
+                <label><input type="radio" name="game-mode" value="texas" checked> テキサスホールデム</label>
+                <label><input type="radio" name="game-mode" value="draw"> ファイブカードドロー</label>
+            </fieldset>
+            <button id="start-game-button" class="title-btn primary">ゲーム開始</button>
+            <details class="howto">
+                <summary>遊び方</summary>
+                <ul>
+                    <li>カードは裏で配られてから順にめくられます。</li>
+                    <li>ショウダウン中はコール/レイズ/フォールドはできません。</li>
+                    <li>次のラウンドは「次のラウンドへ移行」から。</li>
+                </ul>
+            </details>
+        </div>
+    </div>
+
+    <div id="game-container" style="display:none;">
+        <h1 id="game-mode-title">テキサスポーカー</h1>
         <div id="table-layout">
             <div id="dealer-anchor" aria-hidden="true"></div>
             <div id="community-cards">
@@ -50,6 +71,7 @@
     <script src="src/js/hand-evaluator.js"></script>
     <script src="src/js/game.js"></script>
     <script src="src/js/ai.js"></script>
+    <script src="src/js/draw-game.js"></script>
     <script src="src/js/ui.js"></script>
     <script src="src/js/main.js"></script>
 

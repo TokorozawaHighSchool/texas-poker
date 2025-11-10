@@ -415,6 +415,36 @@ const ui = (() => {
         renderCardsWithAnimation(el, playerHand, { faceDown: false, stagger: 90 });
     };
 
+    // Deal player's hand face-down, then flip each card sequentially
+    // 既に同一のカードが表で存在する場合は再フリップしない
+    async function dealPlayerHand(cards, options = {}) {
+        const perCardDelay = typeof options.perCardDelay === 'number' ? options.perCardDelay : 240;
+        const startDelay = typeof options.startDelay === 'number' ? options.startDelay : 0;
+        const el = document.getElementById('player-hand');
+        if (!el) return;
+        const existing = el.children.length;
+        // 判定: 同一ハンド（先頭カード一致かつ枚数一致）なら再演出しない
+        if (existing === cards.length && existing > 0) {
+            const c0 = cards[0];
+            const e0 = el.children[0];
+            const same0 = e0 && e0.dataset && e0.dataset.value === String(c0.value).toUpperCase() && e0.dataset.suit === String(c0.suit).toLowerCase();
+            const allFaceUp = [...el.children].every(ch => !ch.classList.contains('card--back'));
+            if (same0 && allFaceUp) return; // 既に表で同じカード
+        }
+        // 新しいハンドとみなして一旦クリア
+        el.innerHTML = '';
+        // 裏面で配布（アニメつき）
+        renderCardsWithAnimation(el, cards, { faceDown: true, stagger: 90 });
+        // preload to avoid pop-in on flip
+        try { await Promise.all(cards.map(c => preloadCardImage(c.value, c.suit))); } catch (_) { }
+        // flip sequentially
+        for (let i = 0; i < cards.length; i++) {
+            const child = el.children[i];
+            const delay = startDelay + i * perCardDelay;
+            setTimeout(() => flipCard(child, cards[i], false), delay);
+        }
+    }
+
     const updateAIHand = (aiHand, faceDown = true) => {
         const aiHandElement = document.getElementById('ai-hand');
         renderCardsWithAnimation(aiHandElement, aiHand, { faceDown, stagger: 90 });
@@ -503,6 +533,42 @@ const ui = (() => {
         renderCardsWithAnimation(tableCardsElement, tableCards, { faceDown: false, stagger: 120 });
     };
 
+    // Deal community cards face-down then flip each sequentially
+    // 既に公開済みのカードはそのまま保持し、新規のみ配ってめくる
+    async function dealCommunityCards(cards, options = {}) {
+        const perCardDelay = typeof options.perCardDelay === 'number' ? options.perCardDelay : 300;
+        const startDelay = typeof options.startDelay === 'number' ? options.startDelay : 0;
+        const el = document.getElementById('community-hand');
+        if (!el) return;
+        const existing = el.children.length;
+        // 新ハンドの可能性: 既存枚数 > 0 かつ 先頭カード不一致、または cards が減っている
+        if (existing > 0) {
+            const e0 = el.children[0];
+            const c0 = cards[0];
+            const firstMatches = c0 && e0 && e0.dataset && e0.dataset.value === String(c0.value).toUpperCase() && e0.dataset.suit === String(c0.suit).toLowerCase();
+            if (!firstMatches || existing > cards.length) {
+                el.innerHTML = '';
+            }
+        }
+        // 既存分はそのまま。足りない分だけ裏面で追加してフリップ
+        const cur = el.children.length;
+        // プリロード（新規分だけでもよいが全体でも十分軽量）
+        try { await Promise.all(cards.map(c => preloadCardImage(c.value, c.suit))); } catch (_) {}
+        for (let i = cur; i < cards.length; i++) {
+            const elCard = createCardElement(cards[i], true);
+            const anchor = document.getElementById('dealer-anchor');
+            el.appendChild(elCard);
+            const delayDeal = (i - cur) * 90;
+            const ok = animateDealArc(elCard, anchor, delayDeal);
+            if (!ok) {
+                elCard.classList.add('deal-in');
+                elCard.style.animationDelay = `${delayDeal}ms`;
+            }
+            const delayFlip = startDelay + (i - cur) * perCardDelay;
+            setTimeout(() => flipCard(elCard, cards[i], false), delayFlip);
+        }
+    }
+
     const updatePot = (potAmount) => {
         const potElement = document.getElementById('pot');
         if (potElement) potElement.textContent = `Pot: $${potAmount}`;
@@ -526,6 +592,8 @@ const ui = (() => {
         updatePlayerHand,
         updateTableCards,
         updateAIHand,
+    dealPlayerHand,
+    dealCommunityCards,
         renderAIPlayers,
         updateAIByIndex,
         updateChips,

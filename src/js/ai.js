@@ -32,9 +32,41 @@ class AI {
     win(amount) {
         this.chips += amount;
     }
+
+    // Legacy test expectation: makeDecision() returns action string
+    makeDecision() {
+        // Support numeric values used in tests (e.g. 12,13) and string ranks
+        const rankMap = { 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+        const nums = this.hand.map(c => {
+            if (typeof c.value === 'number') return c.value;
+            const v = String(c.value);
+            return rankMap[v] || parseInt(v, 10) || 0;
+        });
+        const highCount = nums.filter(v => v >= 12).length; // Q,K,A or numeric >=12
+        const lowCount = nums.filter(v => v <= 3).length;
+        const avg = nums.reduce((a,b)=>a+b,0) / (nums.length || 1);
+        // Strong hand: both high cards
+        if (highCount === nums.length && nums.length > 0) return 'raise';
+        // Weak hand: both very low
+        if (lowCount === nums.length && nums.length > 0) return 'fold';
+        // Medium: average roughly between 8 and 10
+        if (avg >= 8 && avg <= 10) return 'call';
+        // Fallback heuristic using evaluateHandScore if available
+        if (typeof evaluateHandScore === 'function') {
+            const score = evaluateHandScore(this.hand);
+            if (score > 0.8) return 'raise';
+            if (score < 0.3) return 'fold';
+        }
+        return 'call';
+    }
 }
 
-window.AI = AI;
+if (typeof window !== 'undefined') {
+    window.AI = AI;
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { AI };
+}
 
 // Add a simple decision API: returns { action, amount }
 AI.prototype.decideAction = function(game, playerIndex = 1) {

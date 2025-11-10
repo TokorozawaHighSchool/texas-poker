@@ -35,4 +35,10 @@ class Deck {
 }
 
 // Make Deck available as a global (avoid ESM export so scripts can be loaded via plain <script> tags)
-window.Deck = Deck;
+if (typeof window !== 'undefined') {
+    window.Deck = Deck;
+}
+// CommonJS export for Node/Jest tests
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Deck };
+}

@@ -162,4 +162,10 @@
 
 	window.evaluateHandScore = function(cards){ return evaluate(cards||[]).score; };
 	window.evaluateHandName  = function(cards){ return evaluate(cards||[]).name; };
+	if (typeof module !== 'undefined' && module.exports) {
+		module.exports = {
+			evaluateHandScore: (cards)=>evaluate(cards||[]).score,
+			evaluateHandName:  (cards)=>evaluate(cards||[]).name
+		};
+	}
 })();
