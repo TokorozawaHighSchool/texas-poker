@@ -1,11 +1,49 @@
+/* ====== Poker table styling ====== */
 #table-layout {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
-    margin: 0 auto;
-    position: relative;
+    width: min(100%, 1200px);
+    max-width: min(96vw, 1200px);
+    margin: clamp(10px, 3vw, 24px) auto clamp(12px, 3.5vw, 28px);
+    position: relative; /* for pseudo-elements */
+    padding: clamp(28px, 5vw, 52px) clamp(14px, 3vw, 28px) clamp(18px, 4vw, 36px);
 }
+
+/* Wooden rail (bottom layer) */
+#table-layout::before {
+    content: "";
+    position: absolute;
+    inset: 0; /* full container */
+    border-radius: clamp(18px, 4vw, 40px);
+    background:
+        radial-gradient(150% 100% at 50% 0%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 50%, rgba(0,0,0,0.25) 100%),
+        linear-gradient(135deg, #5d3c1e 0%, #7a4b25 40%, #4b2d16 100%);
+    box-shadow:
+        0 18px 40px rgba(0,0,0,0.45),
+        inset 0 6px 10px rgba(255,255,255,0.15),
+        inset 0 -8px 14px rgba(0,0,0,0.35);
+    z-index: 0;
+}
+
+/* Green felt (top layer inside) */
+#table-layout::after {
+    content: "";
+    position: absolute;
+    inset: clamp(8px, 1.6vw, 18px); /* rail thickness */
+    border-radius: clamp(14px, 3.4vw, 34px);
+    background:
+        radial-gradient(80% 60% at 50% 35%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.12) 100%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px),
+        linear-gradient(180deg, #168f3e 0%, #0f6f30 100%);
+    box-shadow:
+        inset 0 10px 24px rgba(0,0,0,0.35),
+        inset 0 -8px 18px rgba(0,0,0,0.25);
+    z-index: 1;
+}
+
+/* Elevate table content above felt */
+#table-layout > * { position: relative; z-index: 2; }
 
 /* コマンドボタンと入力欄を大きく */
 #game-container button,
@@ -21,13 +59,28 @@
     text-align: right;
 }
 
-/* ポット表示をやや大きく */
+/* Pot: centered pill badge on the table */
 #pot {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #1a237e;
-    margin: 16px 0 0 0;
-    text-align: center;
+    position: absolute;
+    top: clamp(8px, 3.5vw, 22px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: clamp(14px, 2.4vw, 20px);
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    color: #082d0f;
+    background:
+        radial-gradient(120% 120% at 50% -20%, #fefefe 0%, #e9ffe9 30%, #b9f6ca 60%, #7edc95 100%);
+    box-shadow:
+        0 6px 16px rgba(0,0,0,0.35),
+        inset 0 1px 0 rgba(255,255,255,0.8),
+        inset 0 -2px 8px rgba(0,0,0,0.2),
+        0 0 18px rgba(126, 220, 149, 0.45);
+    border: 1px solid rgba(0,0,0,0.2);
+    z-index: 3;
+    user-select: none;
 }
 
 /* メッセージ（行動表示）をやや大きく */
@@ -102,14 +155,18 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
+    /* dark room background */
+    background:
+        radial-gradient(120% 120% at 50% -10%, #212121 0%, #0e0e0e 60%, #000 100%);
     margin: 0;
     padding: 20px;
+    color: #eaeaea;
 }
 
 h1 {
     text-align: center;
-    color: #333;
+    color: #fafafa;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.5);
 }
 
 .table {
@@ -253,24 +310,27 @@ h1 {
 }
 
 /* Hand chart modal */
-#hand-chart-overlay {
+#hand-chart-overlay,
+#howto-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.62);
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 4000; /* above coins */
 }
 
-#hand-chart {
+#hand-chart,
+#howto-modal {
     background: #fff;
-    width: min(680px, 92vw);
-    max-height: 80vh;
+    width: min(760px, 94vw);
+    max-height: 86vh;
     overflow: auto;
     border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    padding: 14px 16px 18px;
+    padding: 18px 20px 22px;
+    color: #111; /* 濃い本文色で可読性を確保 */
 }
 
 .hc-header {
@@ -281,12 +341,13 @@ h1 {
     margin-bottom: 10px;
 }
 
-#hand-chart-close {
+#hand-chart-close,
+#howto-close {
     background: #eee;
     border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 16px;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 18px;
     cursor: pointer;
 }
 
@@ -298,13 +359,25 @@ h1 {
 .hc-table th,
 .hc-table td {
     border: 1px solid #e0e0e0;
-    padding: 10px;
+    padding: 12px 14px;
     text-align: left;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #212121;
 }
 
 .hc-table thead th {
-    background: #fafafa;
+    background: #f3f3f3;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    color: #111;
+    font-weight: 700;
 }
+
+/* zebra rows */
+.hc-table tbody tr:nth-child(odd) { background: #fafafa; }
+.hc-table tbody tr:hover { background: #f0f7ff; }
 
 /* ====== Realistic pips layout ====== */
 .card__pips {
@@ -496,6 +569,26 @@ h1 {
     transform: translateX(-50%);
     border-radius: 50%;
     pointer-events: none;
+}
+
+/* ====== Coin (chip) animation layer ====== */
+#coin-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2000; /* under overlays */
+}
+.coin {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), rgba(255,255,255,0.2) 40%, rgba(0,0,0,0.2) 70%),
+        linear-gradient(135deg, #f7d14a 0%, #d7a116 40%, #b57f0a 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35), inset 0 0 0 2px rgba(255,255,255,0.15);
+    transform: translate(-50%, -50%);
+    will-change: transform, opacity;
 }
 
 /* Dealing flight (JS-driven FLIP) */

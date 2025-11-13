@@ -588,6 +588,59 @@ const ui = (() => {
         showMessage('');
     };
 
+    // ----- Chip animation helpers -----
+    function getCenter(el){
+        if (!el) return { x: window.innerWidth/2, y: window.innerHeight/2 };
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width/2, y: r.top + r.height/2 };
+    }
+    
+    function getChipAnchor(type, index){
+        // type: 'player' | 'ai' | 'pot'
+        if (type === 'pot') return document.getElementById('pot');
+        if (type === 'player') return document.getElementById('player-chips');
+        if (type === 'ai') {
+            if (typeof index === 'number' && index >= 0) {
+                return document.getElementById(`ai-${index}-chips`);
+            }
+            // fallback to single AI chips element if present
+            return document.getElementById('ai-chips');
+        }
+        return null;
+    }
+
+    function animateChipFly(fromEl, toEl, { count = 6, duration = 600 } = {}){
+        const layer = document.getElementById('coin-layer');
+        if (!layer) return;
+        const start = getCenter(fromEl);
+        const end = getCenter(toEl);
+        for (let i = 0; i < count; i++) {
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            const dx = (Math.random() - 0.5) * 30;
+            const dy = (Math.random() - 0.5) * 18;
+            const sx = start.x + dx;
+            const sy = start.y + dy;
+            const ex = end.x + (Math.random() - 0.5) * 24;
+            const ey = end.y + (Math.random() - 0.5) * 12;
+            const midx = (sx + ex) / 2 + (Math.random() - 0.5) * 60;
+            const midy = Math.min(sy, ey) - 80 + Math.random() * 40; // arc up
+            const tDur = duration + Math.random() * 180;
+            coin.style.left = `${sx}px`;
+            coin.style.top = `${sy}px`;
+            coin.style.opacity = '0.95';
+            layer.appendChild(coin);
+            const keyframes = [
+                { transform: `translate(-50%, -50%) translate(0px,0px)`, opacity: 0.0 },
+                { offset: 0.1, opacity: 1.0 },
+                { transform: `translate(-50%, -50%) translate(${midx - sx}px, ${midy - sy}px)` },
+                { transform: `translate(-50%, -50%) translate(${ex - sx}px, ${ey - sy}px)`, opacity: 0.0 }
+            ];
+            coin.animate(keyframes, { duration: tDur, easing: 'cubic-bezier(.18,.67,.23,1.02)', fill: 'forwards' })
+                .addEventListener('finish', () => { coin.remove(); });
+        }
+    }
+
     return {
         updatePlayerHand,
         updateTableCards,
@@ -603,6 +656,8 @@ const ui = (() => {
         updatePlayerHandName,
         updateAIHandNameByIndex,
         revealAIHandByIndex,
+    animateChipFly,
+    getChipAnchor,
     };
 })();
 

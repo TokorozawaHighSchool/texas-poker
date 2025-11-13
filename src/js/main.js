@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const commSection = document.getElementById('community-cards');
         if (window._gameMode === 'draw') {
             if (commSection) commSection.style.display = 'none';
+            const dctrl = document.getElementById('draw-controls');
+            if (dctrl) dctrl.style.display = '';
         } else {
             if (commSection) commSection.style.display = '';
             if (UI.dealCommunityCards) {
@@ -37,12 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 UI.updateTableCards(window._gameInstance.communityCards);
             }
+            const dctrl = document.getElementById('draw-controls');
+            if (dctrl) dctrl.style.display = 'none';
         }
         UI.updateChips(player0.chips, firstAI ? firstAI.chips : 0, window._gameInstance.pot);
         if (window.evaluateHandName) {
             const cards7 = [...player0.hand, ...window._gameInstance.communityCards];
             UI.updatePlayerHandName(window.evaluateHandName(cards7));
         }
+        // モード別の遊び方を更新
+        renderHowTo(modeValue);
     }
 
     const startBtn = document.getElementById('start-game-button');
@@ -77,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('input[name="game-mode"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const mode = (document.querySelector('input[name="game-mode"]:checked')||{}).value;
+                renderHowTo(mode);
             if (mode === 'draw') {
                 if (titleLogo) titleLogo.textContent = 'ローグライクポーカー';
             } else {
@@ -94,6 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartBtn = document.getElementById('hand-chart-button');
     const chartOverlay = document.getElementById('hand-chart-overlay');
     const chartClose = document.getElementById('hand-chart-close');
+    // HowTo modal controls
+    const howtoOpen = document.getElementById('howto-open');
+    const howtoOverlay = document.getElementById('howto-overlay');
+    const howtoClose = document.getElementById('howto-close');
+    const howtoModalBody = document.getElementById('howto-modal-body');
+    // Draw controls
+    const drawControls = document.getElementById('draw-controls');
+    const drawInput = document.getElementById('draw-input');
+    const drawButton = document.getElementById('draw-button');
+    const standButton = document.getElementById('stand-button');
 
     function refreshActionButtons() {
         const game = window._gameInstance;
@@ -105,6 +122,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // 手番中は常時表示しない（既存の表示制御維持）
             // ここでは隠すだけ
             nextRoundBtn.style.display = 'none';
+        }
+        // Draw専用の表示制御
+        if (drawControls) {
+            if (window._gameMode === 'draw') {
+                drawControls.style.display = inShowdown ? 'none' : '';
+            } else {
+                drawControls.style.display = 'none';
+            }
         }
     }
 
@@ -138,6 +163,30 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshActionButtons();
         });
     }
+            function renderHowTo(mode) {
+                const el = document.getElementById('howto-content');
+                if (!el) return;
+                if (mode === 'draw') {
+                    el.innerHTML = `
+                        <ul>
+                            <li>各プレイヤーに5枚が配られ、1回だけ「ドロー（交換）」できます。</li>
+                            <li>交換したいカードの位置を入力して「ドロー」を押すと交換されます（例: 1 3 5）。</li>
+                            <li>交換しない場合は「スタンド」。全員の交換が終わると勝敗判定します。</li>
+                            <li>コール/レイズ/フォールドはテキサスと同様に行えます（簡易ルール）。</li>
+                        </ul>
+                    `;
+                } else {
+                    el.innerHTML = `
+                        <ul>
+                            <li>各プレイヤーに2枚が配られ、場に5枚のコミュニティカードが公開されます。</li>
+                            <li>各ストリートごとにベッティングを行い、ショウダウンで役の強さを競います。</li>
+                            <li>ショウダウン中はコール/レイズ/フォールドはできません。次のハンドは「次のラウンドへ」。</li>
+                            <li>役表は「役表」ボタンからいつでも確認できます。</li>
+                        </ul>
+                    `;
+                }
+            }
+
 
     if (nextRoundBtn) {
         nextRoundBtn.addEventListener('click', () => {
@@ -157,12 +206,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window._gameMode === 'draw') {
                 const commSection = document.getElementById('community-cards');
                 if (commSection) commSection.style.display = 'none';
+                const dctrl = document.getElementById('draw-controls');
+                if (dctrl) dctrl.style.display = '';
             } else {
                 if (UI.dealCommunityCards) {
                     UI.dealCommunityCards(game.communityCards, { perCardDelay: 300 });
                 } else {
                     UI.updateTableCards(game.communityCards);
                 }
+                const dctrl = document.getElementById('draw-controls');
+                if (dctrl) dctrl.style.display = 'none';
             }
             UI.updateChips(np.chips, na ? na.chips : 0, game.pot);
             const aiPlayersNext = game.players.slice(1).map(p => ({ chips: p.chips }));
@@ -188,6 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chartOverlay) chartOverlay.addEventListener('click', (e) => { if (e.target === chartOverlay) closeChart(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChart(); });
 
+    function openHowto() { if (howtoOverlay) { howtoOverlay.style.display = 'flex'; if (window.Sound) window.Sound.click(); } }
+    function closeHowto() { if (howtoOverlay) { howtoOverlay.style.display = 'none'; if (window.Sound) window.Sound.click(); } }
+    function syncHowtoModal(){
+        const src = document.getElementById('howto-content');
+        if (src && howtoModalBody) howtoModalBody.innerHTML = src.innerHTML;
+    }
+    if (howtoOpen) howtoOpen.addEventListener('click', () => { syncHowtoModal(); openHowto(); });
+    if (howtoClose) howtoClose.addEventListener('click', closeHowto);
+    if (howtoOverlay) howtoOverlay.addEventListener('click', (e) => { if (e.target === howtoOverlay) closeHowto(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHowto(); });
+
     callBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('call'); });
     raiseBtn.addEventListener('click', () => {
         if (window.Sound) window.Sound.click();
@@ -203,6 +267,89 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     foldBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('fold'); });
 
+    // --- Draw mode specific: draw/stand commands ---
+    function parseDrawIndices(str) {
+        if (!str) return [];
+        const tokens = String(str).split(/[\s,]+/).filter(Boolean);
+        const set = new Set();
+        tokens.forEach(t => {
+            let n = parseInt(t, 10);
+            if (isNaN(n)) return;
+            if (n >= 1 && n <= 5) n = n - 1; // accept 1..5
+            if (n >= 0 && n <= 4) set.add(n);
+        });
+        return Array.from(set).sort((a,b)=>a-b);
+    }
+
+    if (drawButton) {
+        drawButton.addEventListener('click', () => {
+            if (window.Sound) window.Sound.click();
+            if (window._gameMode !== 'draw') return;
+            const game = window._gameInstance;
+            if (!game) return;
+            const me = 0;
+            if (game.players[me].hasDrawn) {
+                UI.showMessage('ドローは一度だけ可能です');
+                return;
+            }
+            const idxs = parseDrawIndices(drawInput && drawInput.value);
+            game.drawCards(me, idxs);
+            UI.updatePlayerHand(game.players[me].hand);
+            UI.updateChips(game.players[me].chips, null, game.pot);
+            // naive AI draw: each AI replaces first two cards
+            for (let i = 1; i < game.players.length; i++) {
+                const ai = game.players[i];
+                if (!ai.folded && !ai.hasDrawn) {
+                    game.drawCards(i, [0,1]);
+                    UI.updateAIByIndex(i-1, ai.hand, true, ai.chips);
+                }
+            }
+            if (game.stage >= 4) {
+                const res = game.showdown();
+                if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
+                else UI.showMessage('Showdown');
+                const btn = document.getElementById('next-round-button');
+                if (btn) btn.style.display = '';
+                refreshActionButtons();
+            } else {
+                UI.showMessage('ドローしました');
+            }
+        });
+    }
+
+    if (standButton) {
+        standButton.addEventListener('click', () => {
+            if (window.Sound) window.Sound.click();
+            if (window._gameMode !== 'draw') return;
+            const game = window._gameInstance;
+            if (!game) return;
+            const me = 0;
+            if (game.players[me].hasDrawn) {
+                UI.showMessage('すでにドロー済みです');
+                return;
+            }
+            game.drawCards(me, []);
+            UI.updatePlayerHand(game.players[me].hand);
+            for (let i = 1; i < game.players.length; i++) {
+                const ai = game.players[i];
+                if (!ai.folded && !ai.hasDrawn) {
+                    game.drawCards(i, [0,1]);
+                    UI.updateAIByIndex(i-1, ai.hand, true, ai.chips);
+                }
+            }
+            if (game.stage >= 4) {
+                const res = game.showdown();
+                if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
+                else UI.showMessage('Showdown');
+                const btn = document.getElementById('next-round-button');
+                if (btn) btn.style.display = '';
+            } else {
+                UI.showMessage('スタンドしました');
+            }
+            refreshActionButtons();
+        });
+    }
+
     // 初期描画後（まだゲーム開始前）ボタンは非表示のまま。開始後に refreshActionButtons 実行。
 });
 
@@ -216,21 +363,11 @@ function playerAction(action, amount = 0) {
     }
     const playerIndex = 0;
 
-    // Draw モード固有処理: レイズ/コールは単純化、フォールド以外で一度だけドローできる例（簡易）
+    // Draw モード: 交換は専用ボタンで実施。ここでは賭け操作のみ。
     if (window._gameMode === 'draw') {
         if (action === 'fold') { game.fold(playerIndex); }
         else if (action === 'raise') { game.bet(playerIndex, amount); }
         else if (action === 'call') { game.call(playerIndex); }
-        // 自動で 2,3,4 番目カードを交換するサンプルロジック（UI未実装簡易版）
-        if (game.stage === 0 && !game.players[playerIndex].hasDrawn) {
-            game.drawCards(playerIndex, [1,2]);
-            UI.showMessage('ドロー: 2枚交換しました');
-        }
-        if (game.stage === 2) {
-            const res = game.showdown();
-            if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins`); else UI.showMessage('Showdown');
-        }
-        // ハンド更新
         UI.updatePlayerHand(game.players[playerIndex].hand);
         UI.updateChips(game.players[playerIndex].chips, null, game.pot);
         return;
@@ -258,14 +395,20 @@ function playerAction(action, amount = 0) {
                 UI.showMessage(`${actor.name} folds.`);
                 if (window.Sound) window.Sound.fold();
             } else if (act === 'call') {
+                const from = document.getElementById(`ai-${idx-1}-chips`) || document.getElementById('ai-chips');
+                const to = document.getElementById('pot');
                 game.call(idx);
+                if (from && to && window.UI && UI.animateChipFly) UI.animateChipFly(from, to, { count: 5 });
                 UI.showMessage(`${actor.name} calls.`);
                 if (window.Sound) window.Sound.chips();
             } else if (act === 'raise') {
                 let amt = parseInt(decision.amount);
                 if (isNaN(amt) || amt <= 0) amt = 50;
                 amt = Math.min(amt, actor.chips);
+                const from = document.getElementById(`ai-${idx-1}-chips`) || document.getElementById('ai-chips');
+                const to = document.getElementById('pot');
                 game.bet(idx, amt);
+                if (from && to && window.UI && UI.animateChipFly) UI.animateChipFly(from, to, { count: Math.min(10, 4 + Math.floor(amt/50)) });
                 UI.showMessage(`${actor.name} raises ${amt}.`);
                 if (window.Sound) window.Sound.chips();
             }
@@ -275,10 +418,16 @@ function playerAction(action, amount = 0) {
     }
 
     if (action === 'call') {
-        game.call(playerIndex);
+    const from = document.getElementById('player-chips');
+    const to = document.getElementById('pot');
+    game.call(playerIndex);
+    if (from && to && window.UI && UI.animateChipFly) UI.animateChipFly(from, to, { count: 6 });
         if (window.Sound) window.Sound.chips();
     } else if (action === 'raise') {
-        game.bet(playerIndex, amount);
+    const from = document.getElementById('player-chips');
+    const to = document.getElementById('pot');
+    game.bet(playerIndex, amount);
+    if (from && to && window.UI && UI.animateChipFly) UI.animateChipFly(from, to, { count: Math.min(12, 5 + Math.floor(amount/50)) });
         if (window.Sound) window.Sound.chips();
     } else if (action === 'fold') {
         game.fold(playerIndex);
@@ -310,7 +459,7 @@ function playerAction(action, amount = 0) {
 
     // ショウダウン処理（フォールドしていないAIのみ公開）
     if (game.stage === 4) {
-        function finalizeShowdown(res) {
+    function finalizeShowdown(res) {
             // 既存のAI表示数と比較し、人数が変わったときのみ再構築（フリップ演出を保護）
             const currentBlocks = document.querySelectorAll('#ai-container .ai-block').length;
             const targetBlocks = Math.max(0, game.players.length - 1);
@@ -358,6 +507,17 @@ function playerAction(action, amount = 0) {
             }
             if (res && res.winnerName) {
                 UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
+                // Animate pot -> winner chips
+                const potEl = document.getElementById('pot');
+                let targetEl = null;
+                if (res.winnerName === (game.players[0] && game.players[0].name)) {
+                    targetEl = document.getElementById('player-chips');
+                } else {
+                    // find winner index
+                    const idx = game.players.findIndex(p => p && p.name === res.winnerName);
+                    if (idx > 0) targetEl = document.getElementById(`ai-${idx-1}-chips`) || document.getElementById('ai-chips');
+                }
+                if (potEl && targetEl && window.UI && UI.animateChipFly) UI.animateChipFly(potEl, targetEl, { count: Math.min(18, 6 + Math.floor((res.awarded||0)/100)), duration: 800 });
                 if (window.Sound) window.Sound.win();
             } else {
                 UI.showMessage('Showdown finished.');
