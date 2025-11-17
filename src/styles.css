@@ -498,6 +498,33 @@ h1 {
     display: none !important;
 }
 
+/* ====== Draw selection UI ====== */
+.card.card--selected {
+    outline: 3px solid #4dabf7;
+    outline-offset: -3px;
+    transform: translateY(-8px);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.28);
+}
+
+/* ====== Draw mode: flat background (no table/wood/felt) ====== */
+body.mode-draw {
+    background: #ffffff;
+}
+body.mode-draw #table-layout::before,
+body.mode-draw #table-layout::after {
+    content: none !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+body.mode-draw #pot {
+    display: none !important;
+}
+body.mode-draw #player-chips,
+body.mode-draw #ai-chips,
+body.mode-draw [id^="ai-"][id$="-chips"] {
+    display: none !important;
+}
+
 /* Face illustration image (optional, overrides SVG) */
 .face-graphic .face-illustration {
     display: block;

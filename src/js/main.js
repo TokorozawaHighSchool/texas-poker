@@ -1,12 +1,15 @@
 // メインロジックを実行するファイルです。ゲームの初期化やイベントリスナーの設定を行います。
 
 document.addEventListener('DOMContentLoaded', () => {
+    // モード別コントローラの後始末関数
+    let controlsTeardown = null;
+
     function initGame() {
         const names = ['Player', 'AI 1', 'AI 2', 'AI 3'];
         const modeValue = (document.querySelector('input[name="game-mode"]:checked')||{}).value || 'texas';
         window._gameMode = modeValue;
         if (modeValue === 'draw') {
-            const dnames = names.slice(0, 2); // ドローは2人で開始
+            const dnames = ['Player']; // ドローはプレイヤーのみ（AIなし）
             window._gameInstance = new (window.DrawGame)(dnames);
             window._gameInstance.initializeGame(dnames);
         } else {
@@ -19,20 +22,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const player0 = window._gameInstance.players[0];
         const firstAI = window._gameInstance.players[1];
         const aiPlayersInit = window._gameInstance.players.slice(1).map(p => ({ chips: p.chips }));
-        UI.renderAIPlayers(aiPlayersInit);
+        if (window._gameMode !== 'draw') {
+            UI.renderAIPlayers(aiPlayersInit);
+        }
         if (UI.dealPlayerHand) {
             UI.dealPlayerHand(player0.hand, { perCardDelay: 260 });
         } else {
             UI.updatePlayerHand(player0.hand);
         }
-        if (firstAI) UI.updateAIHand(firstAI.hand, true);
+    if (window._gameMode !== 'draw' && firstAI) UI.updateAIHand(firstAI.hand, true);
         // モード別: Draw ではコミュニティカード非表示
         const commSection = document.getElementById('community-cards');
         if (window._gameMode === 'draw') {
+            document.body.classList.add('mode-draw');
             if (commSection) commSection.style.display = 'none';
             const dctrl = document.getElementById('draw-controls');
             if (dctrl) dctrl.style.display = '';
+            const aic = document.getElementById('ai-container');
+            if (aic) aic.style.display = 'none';
         } else {
+            document.body.classList.remove('mode-draw');
             if (commSection) commSection.style.display = '';
             if (UI.dealCommunityCards) {
                 UI.dealCommunityCards(window._gameInstance.communityCards, { perCardDelay: 300 });
@@ -41,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const dctrl = document.getElementById('draw-controls');
             if (dctrl) dctrl.style.display = 'none';
+            const aic = document.getElementById('ai-container');
+            if (aic) aic.style.display = '';
         }
         UI.updateChips(player0.chips, firstAI ? firstAI.chips : 0, window._gameInstance.pot);
         if (window.evaluateHandName) {
@@ -49,6 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // モード別の遊び方を更新
         renderHowTo(modeValue);
+
+        // コマンド配線をモードごとに有効化
+        if (controlsTeardown) { try { controlsTeardown(); } catch(_){} }
+        if (window._gameMode === 'draw' && typeof window.activateDrawControls === 'function') {
+            controlsTeardown = window.activateDrawControls();
+        } else if (typeof window.activateTexasControls === 'function') {
+            controlsTeardown = window.activateTexasControls();
+        }
+    if (typeof window.updateRaiseButtonLabel === 'function') window.updateRaiseButtonLabel();
+    // 賭け系ボタンの表示制御を反映（ドローでは非表示）
+    if (typeof refreshActionButtons === 'function') refreshActionButtons();
     }
 
     const startBtn = document.getElementById('start-game-button');
@@ -67,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gc) gc.style.display = '';
             // タイトル反映
             if (window._gameMode === 'draw') {
-                if (gameTitle) gameTitle.textContent = 'ローグライクポーカー';
+                if (gameTitle) gameTitle.textContent = 'インフィニティポーカー';
             } else {
                 if (gameTitle) gameTitle.textContent = 'テキサスポーカー';
             }
@@ -85,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = (document.querySelector('input[name="game-mode"]:checked')||{}).value;
                 renderHowTo(mode);
             if (mode === 'draw') {
-                if (titleLogo) titleLogo.textContent = 'ローグライクポーカー';
+                if (titleLogo) titleLogo.textContent = 'インフィニティポーカー';
             } else {
                 if (titleLogo) titleLogo.textContent = 'テキサスポーカー';
             }
@@ -106,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const howtoOverlay = document.getElementById('howto-overlay');
     const howtoClose = document.getElementById('howto-close');
     const howtoModalBody = document.getElementById('howto-modal-body');
-    // Draw controls
+    // Draw controls（表示制御は共通、イベントはコントローラが担当）
     const drawControls = document.getElementById('draw-controls');
     const drawInput = document.getElementById('draw-input');
     const drawButton = document.getElementById('draw-button');
@@ -116,14 +138,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const game = window._gameInstance;
         const inShowdown = game && game.stage >= 4;
         const buttons = [callBtn, raiseBtn, foldBtn, raiseAmountInput];
-        buttons.forEach(b => { if (b) b.style.display = inShowdown ? 'none' : ''; });
+        if (window._gameMode === 'draw') {
+            buttons.forEach(b => { if (b) b.style.display = 'none'; });
+        } else {
+            buttons.forEach(b => { if (b) b.style.display = inShowdown ? 'none' : ''; });
+        }
         // next-round-button はショウダウン後継続可能なら表示（既存ロジックとも連動）
         if (nextRoundBtn && !inShowdown) {
-            // 手番中は常時表示しない（既存の表示制御維持）
+            //  手番中は常時表示しない（既存の表示制御維持）
             // ここでは隠すだけ
             nextRoundBtn.style.display = 'none';
         }
-        // Draw専用の表示制御
+        // Draw専用の表示制御（ドロー時は表示、ショウダウン中は非表示）
         if (drawControls) {
             if (window._gameMode === 'draw') {
                 drawControls.style.display = inShowdown ? 'none' : '';
@@ -131,13 +157,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawControls.style.display = 'none';
             }
         }
+        updateRaiseButtonLabel();
     }
+
+    function updateRaiseButtonLabel() {
+        const game = window._gameInstance;
+        if (!raiseBtn) return;
+        if (!game || game.stage >= 4) { return; }
+        // currentBet が 0 なら最初の賭けなので「ベット」それ以外は「レイズ」
+        if (game.currentBet === 0) {
+            raiseBtn.textContent = 'ベット';
+        } else {
+            raiseBtn.textContent = 'レイズ';
+        }
+    }
+    window.updateRaiseButtonLabel = updateRaiseButtonLabel; // ほかの箇所から再利用
 
     if (retryBtn) {
         retryBtn.addEventListener('click', () => {
             const names = ['Player', 'AI 1', 'AI 2', 'AI 3'];
-            window._gameInstance = new (window.Game || window.PokerGame)(names);
-            window._gameInstance.initializeGame(names);
+            if (window._gameMode === 'draw') {
+                const dnames = ['Player'];
+                window._gameInstance = new (window.DrawGame)(dnames);
+                window._gameInstance.initializeGame(dnames);
+            } else {
+                window._gameInstance = new (window.Game || window.PokerGame)(names);
+                window._gameInstance.initializeGame(names);
+            }
             window._gameInstance.players.forEach(p => p.chips = 1000);
             window._gameInstance.pot = 0;
             window._gameInstance.dealCards();
@@ -149,15 +195,26 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 UI.updatePlayerHand(p.hand);
             }
-            if (a) UI.updateAIHand(a.hand, true);
-            if (UI.dealCommunityCards) {
-                UI.dealCommunityCards(window._gameInstance.communityCards, { perCardDelay: 300 });
-            } else {
-                UI.updateTableCards(window._gameInstance.communityCards);
+            if (window._gameMode !== 'draw' && a) UI.updateAIHand(a.hand, true);
+            if (window._gameMode !== 'draw') {
+                if (UI.dealCommunityCards) {
+                    UI.dealCommunityCards(window._gameInstance.communityCards, { perCardDelay: 300 });
+                } else {
+                    UI.updateTableCards(window._gameInstance.communityCards);
+                }
             }
             UI.updateChips(p.chips, a ? a.chips : 0, window._gameInstance.pot);
-            const aiPlayers = window._gameInstance.players.slice(1).map(ap => ({ chips: ap.chips }));
-            UI.renderAIPlayers(aiPlayers);
+            if (window._gameMode !== 'draw') {
+                const aiPlayers = window._gameInstance.players.slice(1).map(ap => ({ chips: ap.chips }));
+                UI.renderAIPlayers(aiPlayers);
+            } else {
+                const aic = document.getElementById('ai-container');
+                if (aic) aic.style.display = 'none';
+                const commSection = document.getElementById('community-cards');
+                if (commSection) commSection.style.display = 'none';
+                const dctrl = document.getElementById('draw-controls');
+                if (dctrl) dctrl.style.display = '';
+            }
             UI.showMessage('');
             retryBtn.style.display = 'none';
             refreshActionButtons();
@@ -170,9 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     el.innerHTML = `
                         <ul>
                             <li>各プレイヤーに5枚が配られ、1回だけ「ドロー（交換）」できます。</li>
-                            <li>交換したいカードの位置を入力して「ドロー」を押すと交換されます（例: 1 3 5）。</li>
-                            <li>交換しない場合は「スタンド」。全員の交換が終わると勝敗判定します。</li>
-                            <li>コール/レイズ/フォールドはテキサスと同様に行えます（簡易ルール）。</li>
+                            <li>交換したいカードをクリックで選択（複数可）。選択されたカードは強調表示されます。</li>
+                            <li>確定は「ドローボタン」か、手札エリアのダブルクリックで行えます。選択が空ならスタンドになります。</li>
+                            <li>このモードでは賭け操作（コール/ベット/フォールド）はありません。</li>
                         </ul>
                     `;
                 } else {
@@ -204,11 +261,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (na) UI.updateAIHand(na.hand, true);
             if (window._gameMode === 'draw') {
+                document.body.classList.add('mode-draw');
                 const commSection = document.getElementById('community-cards');
                 if (commSection) commSection.style.display = 'none';
                 const dctrl = document.getElementById('draw-controls');
                 if (dctrl) dctrl.style.display = '';
+                const aic = document.getElementById('ai-container');
+                if (aic) aic.style.display = 'none';
             } else {
+                document.body.classList.remove('mode-draw');
                 if (UI.dealCommunityCards) {
                     UI.dealCommunityCards(game.communityCards, { perCardDelay: 300 });
                 } else {
@@ -216,10 +277,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const dctrl = document.getElementById('draw-controls');
                 if (dctrl) dctrl.style.display = 'none';
+                const aic = document.getElementById('ai-container');
+                if (aic) aic.style.display = '';
             }
             UI.updateChips(np.chips, na ? na.chips : 0, game.pot);
-            const aiPlayersNext = game.players.slice(1).map(p => ({ chips: p.chips }));
-            UI.renderAIPlayers(aiPlayersNext);
+            if (window._gameMode !== 'draw') {
+                const aiPlayersNext = game.players.slice(1).map(p => ({ chips: p.chips }));
+                UI.renderAIPlayers(aiPlayersNext);
+            }
             // 役名を初期化＆表示
             UI.updatePlayerHandName('');
             if (window.evaluateHandName) {
@@ -230,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nextRoundBtn.style.display = 'none';
             UI.showMessage('');
             refreshActionButtons();
+            if (typeof window.updateRaiseButtonLabel === 'function') window.updateRaiseButtonLabel();
         });
     }
 
@@ -252,108 +318,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (howtoOverlay) howtoOverlay.addEventListener('click', (e) => { if (e.target === howtoOverlay) closeHowto(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHowto(); });
 
-    callBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('call'); });
-    raiseBtn.addEventListener('click', () => {
-        if (window.Sound) window.Sound.click();
-        let raiseAmount = 50;
-        const game = window._gameInstance;
-        if (raiseAmountInput && !isNaN(parseInt(raiseAmountInput.value))) {
-            raiseAmount = parseInt(raiseAmountInput.value);
-        }
-        if (game && game.players && game.players[0]) {
-            raiseAmount = Math.min(raiseAmount, game.players[0].chips);
-        }
-        playerAction('raise', raiseAmount);
-    });
-    foldBtn.addEventListener('click', () => { if (window.Sound) window.Sound.click(); playerAction('fold'); });
-
-    // --- Draw mode specific: draw/stand commands ---
-    function parseDrawIndices(str) {
-        if (!str) return [];
-        const tokens = String(str).split(/[\s,]+/).filter(Boolean);
-        const set = new Set();
-        tokens.forEach(t => {
-            let n = parseInt(t, 10);
-            if (isNaN(n)) return;
-            if (n >= 1 && n <= 5) n = n - 1; // accept 1..5
-            if (n >= 0 && n <= 4) set.add(n);
-        });
-        return Array.from(set).sort((a,b)=>a-b);
-    }
-
-    if (drawButton) {
-        drawButton.addEventListener('click', () => {
-            if (window.Sound) window.Sound.click();
-            if (window._gameMode !== 'draw') return;
-            const game = window._gameInstance;
-            if (!game) return;
-            const me = 0;
-            if (game.players[me].hasDrawn) {
-                UI.showMessage('ドローは一度だけ可能です');
-                return;
-            }
-            const idxs = parseDrawIndices(drawInput && drawInput.value);
-            game.drawCards(me, idxs);
-            UI.updatePlayerHand(game.players[me].hand);
-            UI.updateChips(game.players[me].chips, null, game.pot);
-            // naive AI draw: each AI replaces first two cards
-            for (let i = 1; i < game.players.length; i++) {
-                const ai = game.players[i];
-                if (!ai.folded && !ai.hasDrawn) {
-                    game.drawCards(i, [0,1]);
-                    UI.updateAIByIndex(i-1, ai.hand, true, ai.chips);
-                }
-            }
-            if (game.stage >= 4) {
-                const res = game.showdown();
-                if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
-                else UI.showMessage('Showdown');
-                const btn = document.getElementById('next-round-button');
-                if (btn) btn.style.display = '';
-                refreshActionButtons();
-            } else {
-                UI.showMessage('ドローしました');
-            }
-        });
-    }
-
-    if (standButton) {
-        standButton.addEventListener('click', () => {
-            if (window.Sound) window.Sound.click();
-            if (window._gameMode !== 'draw') return;
-            const game = window._gameInstance;
-            if (!game) return;
-            const me = 0;
-            if (game.players[me].hasDrawn) {
-                UI.showMessage('すでにドロー済みです');
-                return;
-            }
-            game.drawCards(me, []);
-            UI.updatePlayerHand(game.players[me].hand);
-            for (let i = 1; i < game.players.length; i++) {
-                const ai = game.players[i];
-                if (!ai.folded && !ai.hasDrawn) {
-                    game.drawCards(i, [0,1]);
-                    UI.updateAIByIndex(i-1, ai.hand, true, ai.chips);
-                }
-            }
-            if (game.stage >= 4) {
-                const res = game.showdown();
-                if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}`);
-                else UI.showMessage('Showdown');
-                const btn = document.getElementById('next-round-button');
-                if (btn) btn.style.display = '';
-            } else {
-                UI.showMessage('スタンドしました');
-            }
-            refreshActionButtons();
-        });
-    }
+    // イベント配線は各モード専用コントローラに委譲
 
     // 初期描画後（まだゲーム開始前）ボタンは非表示のまま。開始後に refreshActionButtons 実行。
 });
 
-function playerAction(action, amount = 0) {
+window.playerAction = function playerAction(action, amount = 0) {
     const game = window._gameInstance;
     if (!game) return;
     // ショウダウン後は操作不可
@@ -543,6 +513,10 @@ function playerAction(action, amount = 0) {
         if (canContinue && btn) btn.style.display = '';
     // showdownボタン状態最終更新
     // nextRoundBtn が表示されているので他の操作は消えているはず
+    }
+    // 最終的にボタンラベルを現在の状態に同期
+    if (typeof window.updateRaiseButtonLabel === 'function') {
+        window.updateRaiseButtonLabel();
     }
 }
 // main.js only wires UI to the global Game/Deck/AI implemented in other files
