@@ -11,6 +11,7 @@
             this.folded = false;
             this.contribution = 0;
             this.hasDrawn = false; // whether draw phase completed
+            this.hasBet = false;   // whether placed a bet this round
         }
     }
 
@@ -46,22 +47,36 @@
             this.currentPlayerIndex = 0;
             this.dealerIndex = 0;
             this.communityCards = [];
+            this.ante = 50; // 初期アンティ（UIから変更可能）
+            this.roundCount = 0; // 経過ラウンド数
+            this.depositRequired = false; // 入金が必要な状態か
+            this.requiredDeposit = 500; // 要求入金額（UIで変更可）
         }
-        initializeGame(names){
+        initializeGame(names, options={}){
             this.players = names.map(n=> new DrawPlayer(n));
-            this.resetRound();
+            if (options && typeof options.ante === 'number' && options.ante >= 0) {
+                this.ante = options.ante;
+            } else if (typeof window !== 'undefined' && typeof window._drawAnte === 'number') {
+                this.ante = Math.max(0, window._drawAnte);
+            }
+            this.roundCount = 0;
+            this.depositRequired = false;
+            this.resetRound(false); // 初期ラウンドではカウントを増やさない
         }
-        resetRound(){
+        resetRound(increment=true){
             this.deck.reset();
-            this.players.forEach(p=>{ p.hand=[]; p.folded=false; p.contribution=0; p.hasDrawn=false; });
+            this.players.forEach(p=>{ p.hand=[]; p.folded=false; p.contribution=0; p.hasDrawn=false; p.hasBet=false; });
             for (let i=0;i<5;i++){
                 this.players.forEach(p=>{ p.hand.push(this.deck.deal(1)[0]); });
             }
-            // ante
-            const ante = 50;
+            // 開始時アンティは無し。ベットはユーザー操作で行う。
             this.pot = 0;
-            this.players.forEach(p=>{ const pay = Math.min(ante,p.chips); p.chips -= pay; p.contribution += pay; this.pot += pay; });
             this.stage = 0;
+            // ラウンドカウントを進め、3の倍数の直後は入金必須に
+            if (increment) {
+                this.roundCount += 1;
+                this.depositRequired = (this.roundCount % 3 === 0);
+            }
         }
         // Texas互換API
         dealCards(){ this.resetRound(); }
@@ -98,8 +113,47 @@
                 else { score = Math.random(); }
                 if (score > bScore){ bScore = score; best = p; }
             });
-            if (best){ const awarded = this.pot; best.chips += awarded; this.pot=0; return { winner: best, winnerName: best.name, awarded }; }
+            // 役に応じた係数テーブル（ドロー用）
+            function getMultiplierForHand(hand){
+                let name = '';
+                if (typeof window !== 'undefined' && typeof window.evaluateHandName === 'function') {
+                    name = window.evaluateHandName(hand) || '';
+                }
+                // 簡易判定：役名に含まれるキーワードで係数決定
+                const n = name;
+                if (/ストレートフラッシュ|Straight Flush/i.test(n)) return 12;
+                if (/フォーカード|Four of a Kind/i.test(n)) return 8;
+                if (/フルハウス|Full House/i.test(n)) return 6;
+                if (/フラッシュ|Flush/i.test(n)) return 5;
+                if (/ストレート|Straight/i.test(n)) return 4;
+                if (/スリーカード|Three of a Kind/i.test(n)) return 3;
+                if (/ツーペア|Two Pair/i.test(n)) return 2;
+                if (/ワンペア|One Pair/i.test(n)) return 1.5;
+                return 1; // ハイカード
+            }
+            if (best){
+                const multiplier = getMultiplierForHand(best.hand);
+                const baseBet = Math.max(0, best.contribution || 0);
+                // ベット額×係数を上限に、ポットから支払う
+                const desired = Math.floor(baseBet * multiplier);
+                const awarded = Math.min(this.pot, desired);
+                best.chips += awarded;
+                this.pot -= awarded;
+                return { winner: best, winnerName: best.name, awarded, multiplier };
+            }
             return null;
+        }
+
+        // 入金処理
+        deposit(playerIndex, amount){
+            const p = this.players[playerIndex];
+            if (!p || !this.depositRequired) return false;
+            const amt = Math.max(0, Math.floor(amount||0));
+            if (amt < this.requiredDeposit) return false;
+            // 入金は外部残高からの加算という想定だが、ここではゲーム内チップへ加算で代替
+            p.chips += amt;
+            this.depositRequired = false;
+            return true;
         }
     }
 

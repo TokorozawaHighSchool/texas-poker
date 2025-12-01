@@ -61,6 +61,21 @@ document.addEventListener('DOMContentLoaded', () => {
         // モード別の遊び方を更新
         renderHowTo(modeValue);
 
+        // 操作ガイダンス（ドロー時）
+        if (window._gameMode === 'draw') {
+            UI.showMessage('ベット額を入力して「ベット額確定」を押してください');
+            // 入金ステータス表示更新
+            const ds = document.getElementById('deposit-status');
+            if (ds) {
+                const g = window._gameInstance;
+                const m = g.roundCount % 3;
+                const n = g.depositRequired ? 0 : (m === 0 ? 3 : 3 - m);
+                ds.textContent = `残り ${n} ラウンド後に最低 $${g.requiredDeposit} を入金してください。入金しないとゲームオーバー`; 
+            }
+        } else {
+            UI.showMessage('アクションを選んでください（コール/ベット/フォールド）');
+        }
+
         // コマンド配線をモードごとに有効化
         if (controlsTeardown) { try { controlsTeardown(); } catch(_){} }
         if (window._gameMode === 'draw' && typeof window.activateDrawControls === 'function') {
