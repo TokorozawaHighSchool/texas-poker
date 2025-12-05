@@ -66,17 +66,24 @@
         resetRound(increment=true){
             this.deck.reset();
             this.players.forEach(p=>{ p.hand=[]; p.folded=false; p.contribution=0; p.hasDrawn=false; p.hasBet=false; });
-            for (let i=0;i<5;i++){
-                this.players.forEach(p=>{ p.hand.push(this.deck.deal(1)[0]); });
-            }
             // 開始時アンティは無し。ベットはユーザー操作で行う。
             this.pot = 0;
-            this.stage = 0;
+            // ベット確定後に配るため、開始時は未配布ステージにする
+            this.stage = -1; // -1: 未配布（ベット後にinitialDeal）
             // ラウンドカウントを進め、3の倍数の直後は入金必須に
             if (increment) {
                 this.roundCount += 1;
                 this.depositRequired = (this.roundCount % 3 === 0);
             }
+        }
+        // ベット確定後の初回配布
+        initialDeal(){
+            if (this.stage !== -1) return;
+            // 5枚ずつ配布
+            for (let i=0;i<5;i++){
+                this.players.forEach(p=>{ const c=this.deck.deal(1)[0]; if (c) p.hand.push(c); });
+            }
+            this.stage = 0;
         }
         // Texas互換API
         dealCards(){ this.resetRound(); }
@@ -86,6 +93,9 @@
             if (!p || amount<=0) return;
             const pay = Math.min(amount, p.chips);
             p.chips -= pay; p.contribution += pay; this.pot += pay;
+            p.hasBet = true;
+            // 初回配布がまだなら、ここで配る
+            if (this.stage === -1) this.initialDeal();
         }
         call(playerIndex){ /* simplified: treat as bet of 0 */ }
         fold(playerIndex){ const p=this.players[playerIndex]; if (p) p.folded=true; }
@@ -107,10 +117,16 @@
             this.stage = 4;
             const active = this.players.filter(p=>!p.folded);
             let best=null,bScore=-Infinity;
+            const results = [];
             active.forEach(p=>{
                 let score = 0;
+                let name = '';
                 if (typeof evaluateHandScore === 'function'){ score = evaluateHandScore(p.hand); }
                 else { score = Math.random(); }
+                if (typeof window !== 'undefined' && typeof window.evaluateHandName === 'function') {
+                    name = window.evaluateHandName(p.hand) || '';
+                }
+                results.push({ player: p, score, name });
                 if (score > bScore){ bScore = score; best = p; }
             });
             // 役に応じた係数テーブル（ドロー用）
@@ -139,7 +155,8 @@
                 const awarded = Math.min(this.pot, desired);
                 best.chips += awarded;
                 this.pot -= awarded;
-                return { winner: best, winnerName: best.name, awarded, multiplier };
+                const bestRes = results.find(r=>r.player===best) || { name: '' };
+                return { winner: best, winnerName: best.name, handName: bestRes.name, awarded, multiplier };
             }
             return null;
         }
@@ -147,11 +164,14 @@
         // 入金処理
         deposit(playerIndex, amount){
             const p = this.players[playerIndex];
-            if (!p || !this.depositRequired) return false;
+            if (!p) return false;
             const amt = Math.max(0, Math.floor(amount||0));
-            if (amt < this.requiredDeposit) return false;
-            // 入金は外部残高からの加算という想定だが、ここではゲーム内チップへ加算で代替
-            p.chips += amt;
+            if (amt <= 0) return false;
+            // いつでも入金可: プレイヤーの持ち金（chips）から差し引く。ポットは変更しない。
+            const pay = Math.min(amt, p.chips);
+            if (pay <= 0) return false;
+            p.chips -= pay;
+            // 入金必須フラグは解除して継続可能にする
             this.depositRequired = false;
             return true;
         }

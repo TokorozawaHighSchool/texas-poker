@@ -41,7 +41,10 @@
         // シングルプレイのためAI処理は無し
         if (game.stage >= 4) {
           const res = game.showdown();
-          if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}`); else UI.showMessage('Showdown');
+          if (res && res.winnerName) {
+            const name = res.handName ? ` (${res.handName})` : '';
+            UI.showMessage(`${res.winnerName} wins $${res.awarded}${name}`);
+          } else UI.showMessage('Showdown');
           const btn = document.getElementById('next-round-button'); if (btn) btn.style.display = '';
         } else {
           UI.showMessage(idxs.length ? 'ドローしました' : 'スタンドしました');
@@ -69,10 +72,13 @@
   const player = game.players[me]; if (!player) return;
   const pay = Math.min(safe, player.chips);
   if (pay <= 0) { UI.showMessage('ベット額を入力してください'); return; }
-  // ベットを即時反映
-  player.chips -= pay; player.contribution = (player.contribution||0) + pay; game.pot += pay;
-  player.hasBet = true;
-  UI.updateChips(player.chips, 0, game.pot);
+  // DrawGame APIでベット確定（initialDealが未配布ならここで配布される）
+  game.bet(me, pay);
+  UI.updateChips(game.players[me].chips, 0, game.pot);
+  // 配布が完了していれば手札を表示
+  if (game.players[me].hand && game.players[me].hand.length) {
+    UI.updatePlayerHand(game.players[me].hand);
+  }
   UI.showMessage(`$${pay} ベットしました。交換したいカードをクリックして選び、「ドロー」か「スタンド」を行ってください。`);
     };
     betButton.addEventListener('click', clickBet);
@@ -91,12 +97,6 @@
       if (ok) {
         UI.showMessage(`$${val} を入金しました。プレイを続行できます。`);
         const p = game.players[me]; UI.updateChips(p.chips, 0, game.pot);
-        const ds = document.getElementById('deposit-status');
-        if (ds) {
-    const m = game.roundCount % 3;
-    const n = game.depositRequired ? 0 : (m === 0 ? 3 : 3 - m);
-          ds.textContent = `残り ${n} ラウンド後に最低 $${game.requiredDeposit} を入金してください。入金しないとゲームオーバー`;
-        }
       } else {
         if (!game.depositRequired) UI.showMessage('入金は不要です');
         else UI.showMessage(`入金額が不足しています（最低 $${game.requiredDeposit}）`);
@@ -127,7 +127,10 @@
   // ドロー時はポット/チップ非表示のため更新は任意
   if (game.stage >= 4) {
         const res = game.showdown();
-  if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}。次のラウンドへ移行を押してください。`); else UI.showMessage('Showdown。次のラウンドへ移行を押してください。');
+        if (res && res.winnerName) {
+          const name = res.handName ? ` (${res.handName})` : '';
+          UI.showMessage(`${res.winnerName} wins $${res.awarded}${name}。次のラウンドへ移行を押してください。`);
+        } else UI.showMessage('Showdown。次のラウンドへ移行を押してください。');
   // プレイヤーのチップ表示を更新（AIは非表示のため0）
   const mePlayer = game.players[0];
   UI.updateChips(mePlayer ? mePlayer.chips : 0, 0, game.pot);
@@ -154,7 +157,10 @@
       UI.showMessage('スタンドしました');
       if (game.stage >= 4) {
         const res = game.showdown();
-  if (res && res.winnerName) UI.showMessage(`${res.winnerName} wins $${res.awarded}。次のラウンドへ移行を押してください。`); else UI.showMessage('Showdown。次のラウンドへ移行を押してください。');
+        if (res && res.winnerName) {
+          const name = res.handName ? ` (${res.handName})` : '';
+          UI.showMessage(`${res.winnerName} wins $${res.awarded}${name}。次のラウンドへ移行を押してください。`);
+        } else UI.showMessage('Showdown。次のラウンドへ移行を押してください。');
   const mePlayer = game.players[0];
   UI.updateChips(mePlayer ? mePlayer.chips : 0, 0, game.pot);
         const btn = document.getElementById('next-round-button'); if (btn) btn.style.display = '';
